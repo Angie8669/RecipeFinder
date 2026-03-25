@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recipe Finder - Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename = 'scripts/login.js')}}"></script>
+</head>
+
+<body>
+    <div id="errorMessage"></div>
+    <form id="loginForm">
+        <label>Username</label>
+        <input type="text" placeholder="Username" name="username"/>
+        <br/>
+        <label>Password</label>
+        <input type="password" placeholder="Password" name="password"/>
+        <br/>
+        <input type="submit" value="Submit"/>
+    </form>
+
+
+</body>
+</html>

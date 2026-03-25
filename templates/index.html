@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recipe Finder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename = 'scripts/search.js')}}"></script>
+</head>
+
+<body>
+
+<div class="topnav">
+    <h1>Song Finder</h1>
+    <p>Enter song name, genre, or artist:</p>
+    <div class="search-container">
+        <input type="text" class="search" placeholder="Search.." name="search">
+        <button class="submit" onclick="search()">Search</button>
+    </div>
+
+</div>
+<div class="results" id="result_list"/>
+</body>
+
+</html>
+
