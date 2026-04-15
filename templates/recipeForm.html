@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Create New Recipe</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename = 'scripts/recipeForm.js')}}"></script>
+</head>
+<body>
+    <div>
+        <label for="ImageURL">Image URL</label>
+        <input id="ImageURL" type="text" placeholder="Insert URL for image." name="ImageURL"/>
+        <img src="" id="ImagePreview"/>
+    </div>
+</body>
+</html>
