@@ -1,0 +1,14 @@
+.column {
+    width: 50%;
+}
+
+.recipeForm {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.row {
+    display: flex;
+    width: 100%;
+}

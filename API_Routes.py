@@ -7,7 +7,7 @@ from flask import request
 def initViews(app):
     @app.route("/api/getAllIngredients")
     def getAllIngredients():
-        query = "SELECT * FROM ingredients"
+        query = "SELECT i.ingredientID, ingredientName, cost, STRING_AGG(CONVERT(NVARCHAR(max), measurement), ',') as possibleMeasurements FROM ingredients i LEFT JOIN ingredients_n_measurements inm ON i.ingredientID = inm.ingredientID group by i.ingredientID, ingredientName, cost"
         response = queryDatabase(query)
         return response
 
@@ -41,13 +41,15 @@ def initViews(app):
         query = "SELECT * FROM users WHERE username = ?"
         data = (username)
         response = queryDatabase(query, data)
+        print(response)
         if len(response) == 0:
             return "Incorrect Username or Password.", 400
 
-        if bcrypt.checkpw(request.args.get("password").encode(), response[0].password):
-            return f"{{\"userID\":{response[0].userID}}}"
+        if bcrypt.checkpw(request.args.get("password").encode(), response[0]["password"]):
+            return f"{{\"userID\":{response[0]['userID']}}}"
         else:
             return "Incorrect Username or Password.", 400
+
 
 
 password = credentials.password
