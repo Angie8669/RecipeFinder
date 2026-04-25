@@ -4,36 +4,52 @@
     <meta charset="UTF-8">
     <title>Create New Recipe</title>
     <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/recipeForm.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename = 'scripts/recipeForm.js')}}"></script>
+    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
 
 </head>
 <body>
-    <div class="recipeForm">
-        <div class="row">
-            <label for="recipeName">Recipe Name</label>
-            <input id="recipeName" type="text" placeholder="Insert recipe name.">
-            <label for="imageURL">Image URL</label>
-            <input id="imageURL" type="text" placeholder="Insert URL for image." name="imageURL"/>
-            <img src="" id="imagePreview"/>
+    <div class="topnav">
+        <div class="leftnav">
+            <a class="navItem" href="/">Home</a>
+            <a class="navItem" href="/recipes">Recipes</a>
         </div>
-        <div class="row">
-            <div class="column">
-                <div id="ingredientList"></div>
-                <div>
-                    <button id="addIngredient">Add Ingredient</button>
+        <div class="rightnav">
+            <a class="navItem" href="/login">Login</a>
+            <a class="navItem" href="/signup">Sign Up</a>
+        </div>
+
+    </div>
+    <div class="content">
+        <div class="recipeForm">
+            <div class="row">
+                <label for="recipeName">Recipe Name</label>
+                <input id="recipeName" type="text" placeholder="Insert recipe name.">
+                <label for="imageURL">Image URL</label>
+                <input id="imageURL" type="text" placeholder="Insert URL for image." name="imageURL"/>
+                <img src="" id="imagePreview"/>
+            </div>
+            <div class="row">
+                <div class="column">
+                    <div id="ingredientList"></div>
+                    <div>
+                        <button id="addIngredient">Add Ingredient</button>
+                    </div>
+                </div>
+                <div class="column">
+                    <div id="equipmentList"></div>
+                    <div>
+                        <button id="addEquipment">Add Equipment</button>
+                    </div>
                 </div>
             </div>
-            <div class="column">
-                <div id="equipmentList"></div>
-                <div>
-                    <button id="addEquipment">Add Equipment</button>
-                </div>
+            <div class="row">
+                <textarea id="instructions"></textarea>
+                <button id="submit">Create Recipe</button>
             </div>
-        </div>
-        <div class="row">
-            <textarea id="instructions"></textarea>
-            <button id="submit">Create Recipe</button>
         </div>
     </div>
 

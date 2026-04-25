@@ -7,6 +7,7 @@ from flask import request
 
 
 def initViews(app):
+
     @app.route("/api/getAllIngredients")
     def getAllIngredients():
         query = "SELECT i.ingredientID, ingredientName, cost, STRING_AGG(CONVERT(NVARCHAR(max), measurement), ',') as possibleMeasurements FROM ingredients i LEFT JOIN ingredients_n_measurements inm ON i.ingredientID = inm.ingredientID group by i.ingredientID, ingredientName, cost ORDER BY i.ingredientName"
@@ -17,6 +18,13 @@ def initViews(app):
     def getAllEquipment():
         query = "SELECT * FROM equipment"
         response = queryDatabase(query)
+        return response
+
+    @app.route("/api/getIngredientList/<userID>")
+    def getIngredientList(userID):
+        query = "SELECT * FROM users_n_ingredients WHERE userID = ?"
+        data = (userID)
+        response = queryDatabase(query, data)
         return response
 
     @app.route("/createUser", methods=["POST"])
@@ -48,7 +56,8 @@ def initViews(app):
             return "Incorrect Username or Password.", 400
 
         if bcrypt.checkpw(request.args.get("password").encode(), response[0]["password"]):
-            return f"{{\"userID\":{response[0]['userID']}}}"
+            user = {"userID": response[0]["userID"], "username": response[0]["username"]}
+            return user
         else:
             return "Incorrect Username or Password.", 400
 
@@ -89,6 +98,45 @@ def initViews(app):
             query = "INSERT INTO recipes_n_equipment (recipeID, equipment) VALUES (?, ?)"
             data = (recipeID, equipmentVal)
             queryDatabaseInsert(query, data)
+
+        return "{\"response\":\"success\"}"
+
+    @app.route("/api/updateIngredientList", methods=["POST"])
+    def updateIngredientList():
+        userID = request.json["userID"]
+        ingredients = request.json["ingredients"]
+
+
+        query = "SELECT * FROM users WHERE userID = ?"
+        data = (userID)
+        response = queryDatabase(query, data)
+        if len(response) == 0:
+            return "User does not exist.", 400
+
+        if len(ingredients) == 0 or ingredients == None:
+            return "Invalid Ingredients.", 400
+
+        query = "SELECT * FROM users_n_ingredients WHERE userID = ?"
+        data = (userID)
+        ingredientList = queryDatabase(query, data)
+
+
+        for newIngredient in ingredients:
+            measurement = newIngredient["measurement"] if newIngredient["measurement"] != "" else None
+            updated = False
+            for oldIngredient in ingredientList:
+                if int(newIngredient["ingredientID"]) == int(oldIngredient["ingredientID"]):
+                    updated = True
+                    query = "UPDATE users_n_ingredients SET amount = ?, measurement = ? WHERE userID = ? AND ingredientID = ?"
+                    data = (newIngredient["amount"], measurement, userID, newIngredient["ingredientID"])
+                    queryDatabaseInsert(query, data)
+                    break
+
+            if not updated:
+                query = "INSERT INTO users_n_ingredients (userID, ingredientID, measurement, amount) VALUES (?, ?, ?, ?)"
+                data = (userID, newIngredient["ingredientID"], measurement, newIngredient["amount"])
+                queryDatabaseInsert(query, data)
+
 
         return "{\"response\":\"success\"}"
 

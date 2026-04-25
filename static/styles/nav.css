@@ -1,0 +1,36 @@
+body {
+    margin: 0px;
+}
+
+.content {
+    margin-top: 50px;
+}
+
+.topnav {
+    position: fixed;
+    top: 0;
+    height: 50px;
+    width: 100%;
+    background-color: #333;
+    color: white;
+
+}
+
+.navItem {
+    color: white;
+    text-decoration: none;
+    padding: 5px;
+
+}
+
+.navItem:hover {
+    color: pink;
+}
+
+.leftnav {
+    float: left;
+}
+
+.rightnav {
+    float: right;
+}

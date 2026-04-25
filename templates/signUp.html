@@ -4,30 +4,50 @@
     <meta charset="UTF-8">
     <title>Recipe Finder - Sign Up</title>
     <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
     <script src="{{ url_for('static', filename = 'scripts/signUp.js')}}"></script>
+    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
 </head>
 
 <body>
-    <div id="errorMessage"></div>
-    <form id="signUpForm">
-        <label>First Name</label>
-        <input type="text" placeholder="First Name" name="firstName"/>
-        <br/>
-        <label>Last Name</label>
-        <input type="text" placeholder="Last Name" name="lastName"/>
-        <br/>
-        <label>Username</label>
-        <input type="text" placeholder="Username" name="username"/>
-        <br/>
-        <label>Password</label>
-        <input type="password" placeholder="Password" name="password"/>
-        <br/>
-        <label>Confirm Password</label>
-        <input type="password" placeholder="Password" name="password2"/>
-        <br/>
-        <input type="submit" value="Submit"/>
-    </form>
+
+    <div class="topnav">
+        <div class="leftnav">
+            <a class="navItem" href="/">Home</a>
+            <a class="navItem" href="/recipes">Recipes</a>
+        </div>
+        <div class="rightnav">
+            <a class="navItem" href="/login">Login</a>
+            <a class="navItem" href="/signup">Sign Up</a>
+        </div>
+
+    </div>
+    <div class="content">
+        <div id="errorMessage"></div>
+        <form id="signUpForm">
+            <label>First Name</label>
+            <input type="text" placeholder="First Name" name="firstName"/>
+            <br/>
+            <label>Last Name</label>
+            <input type="text" placeholder="Last Name" name="lastName"/>
+            <br/>
+            <label>Username</label>
+            <input type="text" placeholder="Username" name="username"/>
+            <br/>
+            <label>Password</label>
+            <input type="password" placeholder="Password" name="password"/>
+            <br/>
+            <label>Confirm Password</label>
+            <input type="password" placeholder="Password" name="password2"/>
+            <br/>
+            <input type="submit" value="Submit"/>
+        </form>
+    </div>
+
+
+
 
 
 </body>

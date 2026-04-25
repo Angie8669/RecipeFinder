@@ -21,7 +21,9 @@ $(document).ready(function() {
             dataType: "json",
             success: function (data) {
                 console.log(data);
-                sessionStorage.setItem("userID", data.userID)
+                sessionStorage.setItem("userID", data.userID);
+                sessionStorage.setItem("username", data.username);
+                window.location.href = "/";
             },
             error: function (xhr, status, err) {
                 console.error("Error:", status, err);
