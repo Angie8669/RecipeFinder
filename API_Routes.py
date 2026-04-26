@@ -10,7 +10,7 @@ def initViews(app):
 
     @app.route("/api/getAllIngredients")
     def getAllIngredients():
-        query = "SELECT i.ingredientID, ingredientName, cost, STRING_AGG(CONVERT(NVARCHAR(max), measurement), ',') as possibleMeasurements FROM ingredients i LEFT JOIN ingredients_n_measurements inm ON i.ingredientID = inm.ingredientID group by i.ingredientID, ingredientName, cost ORDER BY i.ingredientName"
+        query = "SELECT i.ingredientID, ingredientName, cost, STRING_AGG(CONVERT(NVARCHAR(max), inm.measurement), ',') as possibleMeasurements FROM ingredients i LEFT JOIN ingredients_n_measurements inm ON i.ingredientID = inm.ingredientID group by i.ingredientID, ingredientName, cost ORDER BY i.ingredientName"
         response = queryDatabase(query)
         return response
 
@@ -90,8 +90,9 @@ def initViews(app):
             return "Unable to insert recipe.", 400
 
         for ingredient in ingredients:
+            measurement = ingredient["measurement"] if ingredient["measurement"] != "" else None
             query = "INSERT INTO recipes_n_ingredients (recipeID, ingredientID, measurement, amount) VALUES (?, ?, ?, ?)"
-            data = (recipeID, ingredient["ingredientID"], ingredient["measurement"], ingredient["amount"])
+            data = (recipeID, ingredient["ingredientID"], measurement, ingredient["amount"])
             queryDatabaseInsert(query, data)
 
         for equipmentVal in equipment:
@@ -140,6 +141,45 @@ def initViews(app):
 
         return "{\"response\":\"success\"}"
 
+    @app.route("/api/getRecipes")
+    def getRecipes():
+        recipeName = request.args.get("recipeName") if request.args.get("recipeName") != None else ''
+        userID = request.args.get("userID")
+        costMin = float(request.args.get("costMin")) if request.args.get("costMin") != None else 0
+        costMax = float(request.args.get("costMax")) if request.args.get("costMax") != None else float("inf")
+
+        query = "SELECT r.recipeID, recipeName, userID, instructions, img, createdDate, STUFF((SELECT ','+equipment FROM recipes_n_equipment rne WHERE r.recipeID = rne.recipeID FOR xml path('')),1,1,'') as equipment FROM recipes r WHERE recipeName LIKE ?"
+        data = ('%' + recipeName + '%')
+        recipesData = queryDatabase(query, data)
+
+        recipes = {}
+        for recipe in recipesData:
+            recipe["ingredients"] = []
+            recipes[recipe["recipeID"]] = recipe
+
+        query = "SELECT * FROM recipes_n_ingredients"
+        data = ()
+        recipeIngredients = queryDatabase(query, data)
+        for ingredient in recipeIngredients:
+            recipes[ingredient["recipeID"]]["ingredients"].append(ingredient)
+
+        query = "SELECT * FROM ingredients"
+        data = ()
+        ingredientsData = queryDatabase(query, data)
+        ingredients = {}
+        for ingredient in ingredientsData:
+            ingredients[ingredient["ingredientID"]] = ingredient
+
+        for recipe in list(recipes.values()):
+            cost = 0
+            for ingredient in recipe["ingredients"]:
+                cost += ingredients[ingredient["ingredientID"]]["cost"]
+
+            recipe["cost"] = cost
+            if cost > costMax or cost < costMin:
+                recipes.pop(recipe["recipeID"])
+
+        return recipes
 
 password = credentials.password
 
