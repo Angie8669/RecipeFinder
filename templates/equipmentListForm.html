@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <title>Recipe Finder</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/equipmentListForm.css')}}">
     <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/search.js')}}"></script>
+    <script src="{{ url_for('static', filename = 'scripts/equipmentListForm.js')}}"></script>
     <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
 </head>
 
@@ -25,7 +25,11 @@
 
 </div>
 <div class="content">
-    <h1>Recipe Finder</h1>
+    <div id="equipmentList">
+
+    </div>
+    <button id="addEquipment">Add Equipment</button>
+    <button id="submit">Update Equipment</button>
 </div>
 
 </body>

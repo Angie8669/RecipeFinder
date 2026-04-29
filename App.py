@@ -29,6 +29,14 @@ def profile():
 def ingredientListForm():
     return render_template("ingredientListForm.html")
 
+@app.route("/equipmentListForm")
+def equipmentListForm():
+    return render_template("equipmentListForm.html")
+
+@app.route("/recipes")
+def recipes():
+    return render_template("recipes.html")
+
 
 
 app.run(host="0.0.0.0", port=5000)

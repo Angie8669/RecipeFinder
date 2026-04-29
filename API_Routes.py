@@ -27,6 +27,13 @@ def initViews(app):
         response = queryDatabase(query, data)
         return response
 
+    @app.route("/api/getEquipmentList/<userID>")
+    def getEquipmentList(userID):
+        query = "SELECT * FROM users_n_equipment WHERE userID = ?"
+        data = (userID)
+        response = queryDatabase(query, data)
+        return response
+
     @app.route("/createUser", methods=["POST"])
     def createUser():
         # Check if username exists
@@ -141,6 +148,36 @@ def initViews(app):
 
         return "{\"response\":\"success\"}"
 
+    @app.route("/api/updateEquipmentList", methods=["POST"])
+    def updateEquipmentList():
+        userID = request.json["userID"]
+        equipment = request.json["equipment"]
+
+        query = "SELECT * FROM users WHERE userID = ?"
+        data = (userID)
+        response = queryDatabase(query, data)
+        if len(response) == 0:
+            return "User does not exist.", 400
+
+        if len(equipment) == 0 or equipment == None:
+            return "Invalid equipment.", 400
+
+        query = "SELECT * FROM users_n_equipment WHERE userID = ?"
+        data = (userID)
+        equipmentData = queryDatabase(query, data)
+        equipmentList = []
+
+        for equipmentVal in equipmentData:
+            equipmentList.append(equipmentVal["equipment"])
+
+        for equipmentVal in equipment:
+            if not equipmentVal in equipmentList:
+                query = "INSERT INTO users_n_equipment (userID, equipment) VALUES (?, ?)"
+                data = (userID, equipmentVal)
+                queryDatabaseInsert(query, data)
+
+        return "{\"response\":\"success\"}"
+
     @app.route("/api/getRecipes")
     def getRecipes():
         recipeName = request.args.get("recipeName") if request.args.get("recipeName") != None else ''
@@ -151,17 +188,23 @@ def initViews(app):
         query = "SELECT r.recipeID, recipeName, userID, instructions, img, createdDate, STUFF((SELECT ','+equipment FROM recipes_n_equipment rne WHERE r.recipeID = rne.recipeID FOR xml path('')),1,1,'') as equipment FROM recipes r WHERE recipeName LIKE ?"
         data = ('%' + recipeName + '%')
         recipesData = queryDatabase(query, data)
+        if len(recipesData) == 0:
+            return {}
 
         recipes = {}
         for recipe in recipesData:
-            recipe["ingredients"] = []
+            query = "SELECT * FROM users WHERE userID = ?"
+            data = (recipe["userID"])
+            userData = queryDatabase(query, data)
+            recipe["author"] = userData[0]["firstName"] + " " + userData[0]["lastName"]
+            recipe["ingredients"] = {}
             recipes[recipe["recipeID"]] = recipe
 
-        query = "SELECT * FROM recipes_n_ingredients"
-        data = ()
+        query = "SELECT * FROM recipes_n_ingredients WHERE recipeID IN (SELECT recipeID FROM recipes WHERE recipeName LIKE ?)"
+        data = ('%' + recipeName + '%')
         recipeIngredients = queryDatabase(query, data)
         for ingredient in recipeIngredients:
-            recipes[ingredient["recipeID"]]["ingredients"].append(ingredient)
+            recipes[ingredient["recipeID"]]["ingredients"][ingredient["ingredientID"]] = ingredient
 
         query = "SELECT * FROM ingredients"
         data = ()
@@ -170,14 +213,64 @@ def initViews(app):
         for ingredient in ingredientsData:
             ingredients[ingredient["ingredientID"]] = ingredient
 
+        if userID != None:
+            query = "SELECT * FROM users_n_ingredients WHERE userID = ?"
+            data = (userID)
+            userIngredientData = queryDatabase(query, data)
+            userIngredients = {}
+            for ingredient in userIngredientData:
+                userIngredients[ingredient["ingredientID"]] = ingredient
+
+        query = "SELECT * FROM equipment"
+        data = ()
+        equipmentData = queryDatabase(query, data)
+        equipmentDict = {}
+        for equipmentVal in equipmentData:
+            equipmentDict[equipmentVal["equipment"]] = equipmentVal
+
+        if userID != None:
+            query = "SELECT * FROM users_n_equipment WHERE userID = ?"
+            data = (userID)
+            userEquipmentData = queryDatabase(query, data)
+            userEquipment = {}
+            for equipmentVal in userEquipmentData:
+                userEquipment[equipmentVal["equipment"]] = equipmentVal
+
+
         for recipe in list(recipes.values()):
             cost = 0
-            for ingredient in recipe["ingredients"]:
-                cost += ingredients[ingredient["ingredientID"]]["cost"]
+            for ingredientID in recipe["ingredients"]:
+                cost += ingredients[ingredientID]["cost"]
 
             recipe["cost"] = cost
-            if cost > costMax or cost < costMin:
-                recipes.pop(recipe["recipeID"])
+            if userID != None:
+                userCost = cost
+                print(recipe["ingredients"])
+                for ingredient in userIngredients.values():
+                    print(ingredient["ingredientID"])
+                    if ingredient["ingredientID"] in recipe["ingredients"]:
+                        userCost -= ingredients[ingredient["ingredientID"]]["cost"]
+                recipe["userCost"] = userCost
+                print(userCost, costMax, costMin)
+                if userCost > costMax or userCost < costMin:
+                    recipes.pop(recipe["recipeID"])
+
+            else:
+                if cost > costMax or cost < costMin:
+                    recipes.pop(recipe["recipeID"])
+
+            equipmentCost = 0
+            recipeEquipment = recipe["equipment"].split(",")
+            for equipment in recipeEquipment:
+                equipmentCost += equipmentDict[equipment]["cost"]
+
+            recipe["equipmentCost"] = equipmentCost
+            if userID != None:
+                userEquipmentCost = equipmentCost
+                for equipment in userEquipment:
+                    if equipment in recipeEquipment:
+                        userEquipmentCost -= equipmentDict[equipment]["cost"]
+                recipe["userEquipmentCost"] = userEquipmentCost
 
         return recipes
 

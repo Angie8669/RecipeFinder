@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Recipe Finder</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/recipes.css')}}">
+    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <script src="{{ url_for('static', filename = 'scripts/recipes.js')}}"></script>
+    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
+</head>
+
+<body>
+
+<div class="topnav">
+    <div class="leftnav">
+        <a class="navItem" href="/">Home</a>
+        <a class="navItem" href="/recipes">Recipes</a>
+    </div>
+    <div class="rightnav">
+        <a class="navItem" href="/login">Login</a>
+        <a class="navItem" href="/signup">Sign Up</a>
+    </div>
+
+</div>
+<div class="content">
+    <h1>Recipes</h1>
+    <div class="search-container">
+        <h2>Search</h2>
+        <label for="recipeName">Recipe Name:</label>
+        <input id="recipeName" type="text" class="search" placeholder="Search by Recipe Name.." name="search">
+        <label for="tags">Tags:</label>
+        <input id="tags" type="text" placeholder="Enter tags..." name="tags">
+        <label for="min">Minimum Cost:</label>
+        <input id="min" type="number" step="0.01" placeholder="Minimum Cost" name="min">
+        <label for="max">Maximum Cost:</label>
+        <input id="max" type="number" step="0.01" placeholder="Maximum Cost" name="max">
+        <button id="search">Search</button>
+    </div>
+    <div id="recipeList"></div>
+</div>
+
+</body>
+
+</html>
+
