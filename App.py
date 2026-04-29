@@ -37,6 +37,10 @@ def equipmentListForm():
 def recipes():
     return render_template("recipes.html")
 
+@app.route("/recipe/<recipeID>")
+def recipe(recipeID):
+    return render_template("recipe.html")
+
 
 
 app.run(host="0.0.0.0", port=5000)

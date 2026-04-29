@@ -8,6 +8,30 @@ from flask import request
 
 def initViews(app):
 
+    @app.route("/api/getRecipe/<recipeID>")
+    def getRecipe(recipeID):
+        query = "SELECT r.recipeID, recipeName, userID, instructions, img, createdDate, STUFF((SELECT ','+equipment FROM recipes_n_equipment rne WHERE r.recipeID = rne.recipeID FOR xml path('')),1,1,'') as equipment FROM recipes r WHERE recipeID = ?"
+        data = (recipeID)
+        recipesData = queryDatabase(query, data)
+        if len(recipesData) == 0:
+            return {}
+
+        recipe = recipesData[0]
+
+        query = "SELECT * FROM users WHERE userID = ?"
+        data = (recipe["userID"])
+        userData = queryDatabase(query, data)
+        recipe["author"] = userData[0]["firstName"] + " " + userData[0]["lastName"]
+        recipe["ingredients"] = {}
+
+        query = "SELECT rni.ingredientID, i.ingredientName, rni.amount, rni.measurement FROM recipes_n_ingredients rni LEFT JOIN ingredients i ON rni.ingredientID = i.ingredientID WHERE recipeID = ?"
+        data = (recipeID)
+        recipeIngredients = queryDatabase(query, data)
+        for ingredient in recipeIngredients:
+            recipe["ingredients"][ingredient["ingredientID"]] = ingredient
+
+        return recipe
+
     @app.route("/api/getAllIngredients")
     def getAllIngredients():
         query = "SELECT i.ingredientID, ingredientName, cost, STRING_AGG(CONVERT(NVARCHAR(max), inm.measurement), ',') as possibleMeasurements FROM ingredients i LEFT JOIN ingredients_n_measurements inm ON i.ingredientID = inm.ingredientID group by i.ingredientID, ingredientName, cost ORDER BY i.ingredientName"
@@ -76,6 +100,7 @@ def initViews(app):
         instructions = request.json["instructions"]
         ingredients = request.json["ingredients"]
         equipment = request.json["equipment"]
+        tags = request.json["tags"]
 
         query = "SELECT * FROM users WHERE userID = ?"
         data = (userID)
@@ -107,7 +132,18 @@ def initViews(app):
             data = (recipeID, equipmentVal)
             queryDatabaseInsert(query, data)
 
-        return "{\"response\":\"success\"}"
+        for tag in tags.split(","):
+            tag = tag.lower().strip()
+            query = "INSERT INTO recipes_n_tags (recipeID, tag) VALUES (?, ?)"
+            data = (recipeID, tag)
+            queryDatabaseInsert(query, data)
+
+        response = {
+            "recipeID": recipeID,
+            "response": "success",
+        }
+
+        return response
 
     @app.route("/api/updateIngredientList", methods=["POST"])
     def updateIngredientList():
@@ -180,12 +216,13 @@ def initViews(app):
 
     @app.route("/api/getRecipes")
     def getRecipes():
-        recipeName = request.args.get("recipeName") if request.args.get("recipeName") != None else ''
+        recipeName = request.args.get("recipeName") if request.args.get("recipeName") != None else ""
         userID = request.args.get("userID")
         costMin = float(request.args.get("costMin")) if request.args.get("costMin") != None else 0
         costMax = float(request.args.get("costMax")) if request.args.get("costMax") != None else float("inf")
+        tags = request.args.get("tags") if request.args.get("tags") != None else ""
 
-        query = "SELECT r.recipeID, recipeName, userID, instructions, img, createdDate, STUFF((SELECT ','+equipment FROM recipes_n_equipment rne WHERE r.recipeID = rne.recipeID FOR xml path('')),1,1,'') as equipment FROM recipes r WHERE recipeName LIKE ?"
+        query = "SELECT r.recipeID, recipeName, userID, instructions, img, createdDate, STUFF((SELECT ','+equipment FROM recipes_n_equipment rne WHERE r.recipeID = rne.recipeID FOR xml path('')),1,1,'') as equipment, STUFF((SELECT ','+tag FROM recipes_n_tags rnt WHERE r.recipeID = rnt.recipeID FOR xml path('')),1,1,'') as tags FROM recipes r WHERE recipeName LIKE ?"
         data = ('%' + recipeName + '%')
         recipesData = queryDatabase(query, data)
         if len(recipesData) == 0:
@@ -205,6 +242,17 @@ def initViews(app):
         recipeIngredients = queryDatabase(query, data)
         for ingredient in recipeIngredients:
             recipes[ingredient["recipeID"]]["ingredients"][ingredient["ingredientID"]] = ingredient
+
+        if tags != "":
+            for recipe in list(recipes.values()):
+                keep = False
+                for tag in tags.split(","):
+                    tag = tag.lower().strip()
+                    if recipe["tags"] is not None and tag in recipe["tags"]:
+                        keep = True
+                        break
+                if not keep:
+                    recipes.pop(recipe["recipeID"])
 
         query = "SELECT * FROM ingredients"
         data = ()
@@ -273,6 +321,8 @@ def initViews(app):
                 recipe["userEquipmentCost"] = userEquipmentCost
 
         return recipes
+
+
 
 password = credentials.password
 

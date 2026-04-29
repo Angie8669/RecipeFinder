@@ -101,6 +101,7 @@ $(document).ready(function() {
        var recipeName = $("#recipeName").val();
        var imageURL = $("#imageURL").val();
        var instructions = $("#instructions").val();
+       var tags = $("#tags").val();
        var ingredientVals = [];
        var equipmentVals = [];
 
@@ -121,6 +122,7 @@ $(document).ready(function() {
        recipe["imageURL"] = imageURL;
        recipe["instructions"] = instructions;
        recipe["ingredients"] = ingredientVals;
+       recipe["tags"] = tags;
        recipe["equipment"] = equipmentVals;
        console.log(recipe);
 
@@ -132,6 +134,7 @@ $(document).ready(function() {
             data: JSON.stringify(recipe),
             success: function (data) {
                 console.log(data);
+                window.location.href = "/recipe/"+data.recipeID;
             },
             error: function (xhr, status, err) {
                 console.error("Error:", status, err);

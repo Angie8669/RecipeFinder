@@ -15,6 +15,7 @@ $(document).ready(function() {
         } else {
             for(let recipeID in recipes) {
                 recipe = recipes[recipeID];
+                html += "<a href='/recipe/"+recipeID+"'>";
                 html += "<div class='recipe'>";
                 html += "<img src='"+recipe.img+"'/>";
                 html += "<h3>"+recipe.recipeName+"</h3>";
@@ -28,6 +29,7 @@ $(document).ready(function() {
                     html += "<p>User Equipment Cost: $"+recipe.userEquipmentCost+"</p>";
                 }
                 html += "</div>";
+                html += "</a>";
             }
         }
         $("#recipeList").append(html);
@@ -59,6 +61,9 @@ $(document).ready(function() {
 
         if(userID != null) {
             url += "&userID="+userID;
+        }
+        if(tags != "") {
+            url += "&tags="+tags;
         }
         if(min != "") {
             url += "&costMin="+min;
