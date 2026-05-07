@@ -15,8 +15,15 @@ $(document).ready(function() {
         for(const equipmentVal of equipment) {
             equipmentHTML += "<option value='"+equipmentVal.equipment+"'>"+equipmentVal.equipment+"</option>";
         }
+
         equipmentHTML += "</select>";
+        equipmentHTML += "<button id='deleteEquipment"+numEquipment+"'>Delete Equipment</button>"
         $("#equipmentList").append(equipmentHTML);
+        $("#deleteEquipment"+numEquipment).on("click", function(event) {
+            let i = event.target.id.replace("deleteEquipment", "");
+            $("#equipmentDropDown"+i).remove()
+            $("#deleteEquipment"+i).remove()
+        });
     }
 
     $.ajax({
@@ -53,7 +60,13 @@ $(document).ready(function() {
                     }
                 }
                 equipmentHTML += "</select>";
+                equipmentHTML += "<button id='deleteEquipment"+i+"'>Delete Equipment</button>"
                 $("#equipmentList").append(equipmentHTML);
+                $("#deleteEquipment"+i).on("click", function(event) {
+                    let j = event.target.id.replace("deleteEquipment", "");
+                    $("#equipmentDropDown"+j).remove()
+                    $("#deleteEquipment"+j).remove()
+                });
             }
         },
         error: function (xhr, status, err) {
@@ -70,8 +83,10 @@ $(document).ready(function() {
        var equipmentVals = [];
 
        for(var i = 1; i <= numEquipment; i++) {
-            let equipmentData = [];
-            equipmentVals.push($("#equipmentDropDown"+i).val());
+            if($("#equipmentDropDown"+i).length) {
+                let equipmentData = [];
+                equipmentVals.push($("#equipmentDropDown"+i).val());
+            }
        }
 
        let equipmentList = {};
@@ -88,7 +103,7 @@ $(document).ready(function() {
             data: JSON.stringify(equipmentList),
             success: function (data) {
                 console.log(data);
-                //window.location.href="/profile";
+                window.location.href="/profile";
             },
             error: function (xhr, status, err) {
                 console.error("Error:", status, err);

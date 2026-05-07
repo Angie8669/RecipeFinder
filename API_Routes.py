@@ -1,74 +1,17 @@
-from asyncio.windows_events import NULL
-from sqlalchemy import (create_engine,
-                        MetaData, Table, select, insert, update, delete, func, Column, Integer, VARCHAR, DECIMAL,
-                        LargeBinary, Text, ForeignKey, Date)
+import sqlalchemy
+from sqlalchemy import (create_engine,select, insert, delete, func)
 import bcrypt
 import credentials
-import pyodbc
 from flask import request
+from tables import *
 
 engine = create_engine(credentials.connectionURL)
-metadata = MetaData()
-ingredientsTable = Table("ingredients", metadata,
-                         Column("ingredientID", Integer, primary_key=True),
-                         Column("ingredientName", VARCHAR(100), nullable=False),
-                         Column("cost", DECIMAL(10, 2), nullable=False))
-usersTable = Table("users", metadata,
-                   Column("userID", Integer, primary_key=True),
-                   Column("username", VARCHAR(50), nullable=False),
-                   Column("firstName", VARCHAR(100), nullable=False),
-                   Column("lastName", VARCHAR(100), nullable=False),
-                   Column("password", LargeBinary, nullable=False),)
-recipesTable = Table("recipes", metadata,
-                     Column("recipeID", Integer, primary_key=True),
-                     Column("recipeName", VARCHAR(100), nullable=False),
-                     Column("img", VARCHAR(100), nullable=True),
-                     Column("instructions", Text, nullable=False),
-                     Column("userID", Integer, ForeignKey("users.userID"), nullable=False),
-                     Column("createdDate", Date, nullable=False),)
-measurementsTable = Table("measurements", metadata,
-                          Column("measurement", VARCHAR(10), primary_key=True))
-equipmentTable = Table("equipment", metadata,
-                       Column("equipment", VARCHAR(100), primary_key=True),
-                       Column("cost", DECIMAL(10, 2), nullable=False))
-ingredients_n_measurementsTable = Table("ingredients_n_measurements", metadata,
-                    Column("ingredientID", Integer, ForeignKey("ingredients.ingredientID"), primary_key=True),
-                    Column("measurement", VARCHAR(10), ForeignKey("measurements.measurement"), primary_key=True))
-recipes_n_equipmentTable = Table("recipes_n_equipment", metadata,
-                                 Column("recipeID", Integer, ForeignKey("recipes.recipeID"), primary_key=True),
-                                 Column("equipment", VARCHAR(100), ForeignKey("equipment.equipment"), primary_key=True))
-recipes_n_ingredientsTable = Table("recipes_n_ingredients", metadata,
-                                   Column("recipeID", Integer, ForeignKey("recipes.recipeID"), primary_key=True),
-                                   Column("ingredientID", Integer, ForeignKey("ingredients.ingredientID"), primary_key=True),
-                                   Column("amount", DECIMAL(10, 4), nullable=False),
-                                   Column("measurement", VARCHAR(10), ForeignKey("measurements.measurement"),nullable=False))
-recipes_n_tagsTable = Table("recipes_n_tags", metadata,
-                            Column("recipeID", Integer, ForeignKey("recipes.recipeID"), primary_key=True),
-                            Column("tag", VARCHAR(100), primary_key=True))
-users_n_equipmentTable = Table("users_n_equipment", metadata,
-                               Column("userID", Integer, ForeignKey("users.userID"), primary_key=True),
-                               Column("equipment", VARCHAR(100), ForeignKey("equipment.equipment"),primary_key=True))
-users_n_ingredientsTable = Table("users_n_ingredients", metadata,
-                                 Column("userID", Integer, ForeignKey("users.userID"), primary_key=True),
-                                 Column("ingredientID", Integer, ForeignKey("ingredients.ingredientID"), primary_key=True))
 
 
 def initViews(app):
-
-    @app.route("/api/test")
-    def test():
-        engine = create_engine(credentials.connectionURL)
-        metadata = MetaData()
-        ingredients = Table("ingredients", metadata, autoload_with=engine)
-        statement = insert(ingredients).values({"ingredientName": "All Purpose Flour", "cost": 5.00})
-        with engine.connect() as connection:
-            result = connection.execute(statement)
-            connection.commit()
-            print(result.inserted_primary_key)
-        return {}
-
     @app.route("/api/getRecipe/<recipeID>")
     def getRecipe(recipeID):
+        userID = request.args.get("userID")
         query = (select(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID, recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate,
                         func.aggregate_strings(recipes_n_equipmentTable.c.equipment, ",").label("equipment"))
                  .select_from(recipesTable).join(recipes_n_equipmentTable, recipesTable.c.recipeID == recipes_n_equipmentTable.c.recipeID, isouter=True)
@@ -91,6 +34,16 @@ def initViews(app):
         for ingredient in recipeIngredients:
             recipe["ingredients"][ingredient["ingredientID"]] = ingredient
 
+        if userID is not None:
+            query = (select(favorite_recipesTable).where(favorite_recipesTable.c.userID == userID, favorite_recipesTable.c.recipeID == recipeID))
+            favorites = queryDatabase(query)
+            if len(favorites) > 0:
+                recipe["favorited"] = True
+            else:
+                recipe["favorited"] = False
+        else:
+            recipe["favorited"] = False
+
         return recipe
 
     @app.route("/api/getAllIngredients")
@@ -110,7 +63,9 @@ def initViews(app):
 
     @app.route("/api/getIngredientList/<userID>")
     def getIngredientList(userID):
-        query = select(users_n_ingredientsTable).where(users_n_ingredientsTable.c.userID == userID)
+        query = (select(users_n_ingredientsTable.c.ingredientID, users_n_ingredientsTable.c.userID, ingredientsTable.c.ingredientName)
+                 .select_from(users_n_ingredientsTable).join(ingredientsTable, users_n_ingredientsTable.c.ingredientID == ingredientsTable.c.ingredientID, isouter= True)
+                 .where(users_n_ingredientsTable.c.userID == userID))
         response = queryDatabase(query)
         return response
 
@@ -226,6 +181,16 @@ def initViews(app):
                 query = insert(users_n_ingredientsTable).values({"userID": userID, "ingredientID": newIngredient["ingredientID"]})
                 queryDatabaseInsert(query)
 
+        newIngredientIDList = []
+
+        for ingredient in ingredients:
+            newIngredientIDList.append(int(ingredient["ingredientID"]))
+
+        for ingredientID in ingredientIDList:
+            if not (int(ingredientID) in newIngredientIDList):
+                query = delete(users_n_ingredientsTable).where(
+                    users_n_ingredientsTable.c.userID == userID, users_n_ingredientsTable.c.ingredientID == ingredientID)
+                queryDatabaseInsert(query)
 
         return "{\"response\":\"success\"}"
 
@@ -252,6 +217,18 @@ def initViews(app):
         for equipmentVal in equipment:
             if not equipmentVal in equipmentList:
                 query = insert(users_n_equipmentTable).values({"userID": userID, "equipment": equipmentVal})
+                queryDatabaseInsert(query)
+
+        newEquipmentList = []
+
+        for equipmentVal in equipment:
+            newEquipmentList.append(equipmentVal)
+
+        for equipmentVal in equipmentList:
+            if not (equipmentVal in newEquipmentList):
+                query = delete(users_n_equipmentTable).where(
+                    users_n_equipmentTable.c.userID == userID,
+                    users_n_equipmentTable.c.equipment == equipmentVal)
                 queryDatabaseInsert(query)
 
         return "{\"response\":\"success\"}"
@@ -366,8 +343,192 @@ def initViews(app):
 
         return recipes
 
+    @app.route("/api/getRecipesByUser/<userID>")
+    def getRecipesByUser(userID):
+        query = (select(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID,
+                        recipesTable.c.img, recipesTable.c.createdDate,
+                        func.aggregate_strings(recipes_n_equipmentTable.c.equipment, ",").label("equipment"),
+                        func.aggregate_strings(recipes_n_tagsTable.c.tag, ",").label("tags"))
+                 .select_from(recipesTable).join(recipes_n_equipmentTable,
+                                                 recipesTable.c.recipeID == recipes_n_equipmentTable.c.recipeID,
+                                                 isouter=True)
+                 .join(recipes_n_tagsTable, recipesTable.c.recipeID == recipes_n_tagsTable.c.recipeID, isouter=True)
+                 .where(recipesTable.c.userID == userID)
+                 .group_by(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID,
+                           recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate))
+        recipesData = queryDatabase(query)
+        if len(recipesData) == 0:
+            return {}
+
+        recipes = {}
+        for recipe in recipesData:
+            recipe["ingredients"] = {}
+            recipes[recipe["recipeID"]] = recipe
+
+        subquery = select(recipesTable.c.recipeID).where(recipesTable.c.userID == userID)
+        query = select(recipes_n_ingredientsTable).filter(recipes_n_ingredientsTable.c.recipeID.in_(subquery))
+        recipeIngredients = queryDatabase(query)
+        for ingredient in recipeIngredients:
+            recipes[ingredient["recipeID"]]["ingredients"][ingredient["ingredientID"]] = ingredient
+
+        query = select(ingredientsTable)
+        ingredientsData = queryDatabase(query)
+        ingredients = {}
+        for ingredient in ingredientsData:
+            ingredients[ingredient["ingredientID"]] = ingredient
+
+        if userID != None:
+            query = select(users_n_ingredientsTable).where(users_n_ingredientsTable.c.userID == userID)
+            userIngredientData = queryDatabase(query)
+            userIngredients = {}
+            for ingredient in userIngredientData:
+                userIngredients[ingredient["ingredientID"]] = ingredient
+
+        query = select(equipmentTable)
+        equipmentData = queryDatabase(query)
+        equipmentDict = {}
+        for equipmentVal in equipmentData:
+            equipmentDict[equipmentVal["equipment"]] = equipmentVal
+
+        if userID != None:
+            query = select(users_n_equipmentTable).where(users_n_equipmentTable.c.userID == userID)
+            userEquipmentData = queryDatabase(query)
+            userEquipment = {}
+            for equipmentVal in userEquipmentData:
+                userEquipment[equipmentVal["equipment"]] = equipmentVal
+
+        for recipe in list(recipes.values()):
+            cost = 0
+            for ingredientID in recipe["ingredients"]:
+                cost += ingredients[ingredientID]["cost"]
+
+            recipe["cost"] = cost
+            if userID != None:
+                userCost = cost
+                for ingredient in userIngredients.values():
+                    print(ingredient["ingredientID"])
+                    if ingredient["ingredientID"] in recipe["ingredients"]:
+                        userCost -= ingredients[ingredient["ingredientID"]]["cost"]
+                recipe["userCost"] = userCost
 
 
+            equipmentCost = 0
+            recipeEquipment = recipe["equipment"].split(",")
+            for equipment in recipeEquipment:
+                equipmentCost += equipmentDict[equipment]["cost"]
+
+            recipe["equipmentCost"] = equipmentCost
+            if userID != None:
+                userEquipmentCost = equipmentCost
+                for equipment in userEquipment:
+                    if equipment in recipeEquipment:
+                        userEquipmentCost -= equipmentDict[equipment]["cost"]
+                recipe["userEquipmentCost"] = userEquipmentCost
+
+        return recipes
+
+    @app.route("/api/getFavoriteRecipes/<userID>")
+    def getFavoriteRecipes(userID):
+        subquery = select(favorite_recipesTable.c.recipeID).where(favorite_recipesTable.c.userID == userID)
+        query = (select(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID,
+                        recipesTable.c.img, recipesTable.c.createdDate,
+                        func.aggregate_strings(recipes_n_equipmentTable.c.equipment, ",").label("equipment"),
+                        func.aggregate_strings(recipes_n_tagsTable.c.tag, ",").label("tags"))
+                 .select_from(recipesTable).join(recipes_n_equipmentTable,
+                                                 recipesTable.c.recipeID == recipes_n_equipmentTable.c.recipeID,
+                                                 isouter=True)
+                 .join(recipes_n_tagsTable, recipesTable.c.recipeID == recipes_n_tagsTable.c.recipeID, isouter=True)
+                 .filter(recipesTable.c.recipeID.in_(subquery))
+                 .group_by(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID,
+                           recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate))
+        recipesData = queryDatabase(query)
+        if len(recipesData) == 0:
+            return {}
+
+        recipes = {}
+        for recipe in recipesData:
+            recipe["ingredients"] = {}
+            recipes[recipe["recipeID"]] = recipe
+
+        subquery2 = select(recipesTable.c.recipeID).filter(recipesTable.c.recipeID.in_(subquery))
+        query = select(recipes_n_ingredientsTable).filter(recipes_n_ingredientsTable.c.recipeID.in_(subquery2))
+        recipeIngredients = queryDatabase(query)
+        for ingredient in recipeIngredients:
+            recipes[ingredient["recipeID"]]["ingredients"][ingredient["ingredientID"]] = ingredient
+
+        query = select(ingredientsTable)
+        ingredientsData = queryDatabase(query)
+        ingredients = {}
+        for ingredient in ingredientsData:
+            ingredients[ingredient["ingredientID"]] = ingredient
+
+        if userID != None:
+            query = select(users_n_ingredientsTable).where(users_n_ingredientsTable.c.userID == userID)
+            userIngredientData = queryDatabase(query)
+            userIngredients = {}
+            for ingredient in userIngredientData:
+                userIngredients[ingredient["ingredientID"]] = ingredient
+
+        query = select(equipmentTable)
+        equipmentData = queryDatabase(query)
+        equipmentDict = {}
+        for equipmentVal in equipmentData:
+            equipmentDict[equipmentVal["equipment"]] = equipmentVal
+
+        if userID != None:
+            query = select(users_n_equipmentTable).where(users_n_equipmentTable.c.userID == userID)
+            userEquipmentData = queryDatabase(query)
+            userEquipment = {}
+            for equipmentVal in userEquipmentData:
+                userEquipment[equipmentVal["equipment"]] = equipmentVal
+
+        for recipe in list(recipes.values()):
+            cost = 0
+            for ingredientID in recipe["ingredients"]:
+                cost += ingredients[ingredientID]["cost"]
+
+            recipe["cost"] = cost
+            if userID != None:
+                userCost = cost
+                for ingredient in userIngredients.values():
+                    print(ingredient["ingredientID"])
+                    if ingredient["ingredientID"] in recipe["ingredients"]:
+                        userCost -= ingredients[ingredient["ingredientID"]]["cost"]
+                recipe["userCost"] = userCost
+
+            equipmentCost = 0
+            recipeEquipment = recipe["equipment"].split(",")
+            for equipment in recipeEquipment:
+                equipmentCost += equipmentDict[equipment]["cost"]
+
+            recipe["equipmentCost"] = equipmentCost
+            if userID != None:
+                userEquipmentCost = equipmentCost
+                for equipment in userEquipment:
+                    if equipment in recipeEquipment:
+                        userEquipmentCost -= equipmentDict[equipment]["cost"]
+                recipe["userEquipmentCost"] = userEquipmentCost
+
+        return recipes
+
+    @app.route("/api/setFavorite", methods=["POST"])
+    def setFavorite():
+        userID = request.json["userID"]
+        recipeID = request.json["recipeID"]
+        query = insert(favorite_recipesTable).values({"userID": userID, "recipeID": recipeID})
+        queryDatabaseInsert(query)
+
+        return "{\"response\":\"success\"}"
+
+    @app.route("/api/setUnfavorite", methods=["POST"])
+    def setUnfavorite():
+        userID = request.json["userID"]
+        recipeID = request.json["recipeID"]
+
+        query = delete(favorite_recipesTable).where(favorite_recipesTable.c.userID == userID, favorite_recipesTable.c.recipeID == recipeID)
+        queryDatabaseInsert(query)
+
+        return "{\"response\":\"success\"}"
 
 def queryDatabase(statement):
     response = []
@@ -383,4 +544,6 @@ def queryDatabaseInsert(statement):
         result = connection.execute(statement)
         connection.commit()
 
+    if isinstance(statement, sqlalchemy.sql.expression.Delete):
+        return
     return result.inserted_primary_key
