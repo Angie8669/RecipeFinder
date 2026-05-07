@@ -1,11 +1,13 @@
 import sqlalchemy
 from sqlalchemy import (create_engine,select, insert, delete, func)
 import bcrypt
-import credentials
+import os
 from flask import request
 from tables import *
+from dotenv import load_dotenv
 
-engine = create_engine(credentials.connectionURL)
+load_dotenv()
+engine = create_engine(os.getenv("DATABASE_URL"))
 
 
 def initViews(app):
