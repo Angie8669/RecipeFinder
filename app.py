@@ -42,5 +42,5 @@ def recipe(recipeID):
     return render_template("recipe.html")
 
 
-
-app.run(debug=False)
+if __name__ == "__main__":
+    app.run(debug=False)
