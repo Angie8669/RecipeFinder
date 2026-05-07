@@ -43,4 +43,4 @@ def recipe(recipeID):
 
 
 
-app.run(debug=True)
+app.run(debug=False)
