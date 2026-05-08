@@ -55,7 +55,6 @@ def initViews(app):
                  .select_from(ingredientsTable).join(ingredients_n_measurementsTable, ingredientsTable.c.ingredientID == ingredients_n_measurementsTable.c.ingredientID, isouter= True)
                  .group_by(ingredientsTable.c.ingredientID, ingredientsTable.c.ingredientName, ingredientsTable.c.cost).order_by(ingredientsTable.c.ingredientName))
         response = queryDatabase(query)
-        print(response)
         return response
 
     @app.route("/api/getAllEquipment")
@@ -99,7 +98,6 @@ def initViews(app):
         username = request.args.get("username")
         query = select(usersTable).where(usersTable.c.username == username)
         response = queryDatabase(query)
-        print(response)
         if len(response) == 0:
             return "Incorrect Username or Password.", 400
 
@@ -244,15 +242,14 @@ def initViews(app):
         costMax = float(request.args.get("costMax")) if request.args.get("costMax") != None else float("inf")
         tags = request.args.get("tags") if request.args.get("tags") != None else ""
 
+        recipeQuery = select(recipesTable.c.recipeID).filter(recipesTable.c.recipeName.like("%" + recipeName + "%"))
+        tagsQuery = select(recipes_n_tagsTable.c.recipeID, func.aggregate_strings(recipes_n_tagsTable.c.tag, ",").label("tags")).filter(recipes_n_tagsTable.c.recipeID.in_(recipeQuery)).group_by(recipes_n_tagsTable.c.recipeID).subquery()
+        equipmentQuery = select(recipes_n_equipmentTable.c.recipeID, func.aggregate_strings(recipes_n_equipmentTable.c.equipment, ",").label("equipment")).filter(recipes_n_equipmentTable.c.recipeID.in_(recipeQuery)).group_by(recipes_n_equipmentTable.c.recipeID).subquery()
         query = (select(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID,
-                        recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate,
-                        func.aggregate_strings(recipes_n_equipmentTable.c.equipment, ",").label("equipment"),
-                        func.aggregate_strings(recipes_n_tagsTable.c.tag, ",").label("tags"))
-                 .select_from(recipesTable).join(recipes_n_equipmentTable, recipesTable.c.recipeID == recipes_n_equipmentTable.c.recipeID,isouter=True)
-                 .join(recipes_n_tagsTable, recipesTable.c.recipeID == recipes_n_tagsTable.c.recipeID,isouter=True)
-                 .filter(recipesTable.c.recipeName.like("%" + recipeName + "%"))
-                 .group_by(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID,
-                           recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate))
+                        recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate, tagsQuery.c.tags, equipmentQuery.c.equipment)
+                 .select_from(recipesTable).join(equipmentQuery, recipesTable.c.recipeID == equipmentQuery.c.recipeID,isouter=True)
+                 .join(tagsQuery, recipesTable.c.recipeID == tagsQuery.c.recipeID,isouter=True).filter(recipesTable.c.recipeName.like("%" + recipeName + "%")))
+
         recipesData = queryDatabase(query)
         if len(recipesData) == 0:
             return {}
@@ -317,13 +314,10 @@ def initViews(app):
             recipe["cost"] = cost
             if userID != None:
                 userCost = cost
-                print(recipe["ingredients"])
                 for ingredient in userIngredients.values():
-                    print(ingredient["ingredientID"])
                     if ingredient["ingredientID"] in recipe["ingredients"]:
                         userCost -= ingredients[ingredient["ingredientID"]]["cost"]
                 recipe["userCost"] = userCost
-                print(userCost, costMax, costMin)
                 if userCost > costMax or userCost < costMin:
                     recipes.pop(recipe["recipeID"])
 
@@ -409,7 +403,6 @@ def initViews(app):
             if userID != None:
                 userCost = cost
                 for ingredient in userIngredients.values():
-                    print(ingredient["ingredientID"])
                     if ingredient["ingredientID"] in recipe["ingredients"]:
                         userCost -= ingredients[ingredient["ingredientID"]]["cost"]
                 recipe["userCost"] = userCost
@@ -494,7 +487,6 @@ def initViews(app):
             if userID != None:
                 userCost = cost
                 for ingredient in userIngredients.values():
-                    print(ingredient["ingredientID"])
                     if ingredient["ingredientID"] in recipe["ingredients"]:
                         userCost -= ingredients[ingredient["ingredientID"]]["cost"]
                 recipe["userCost"] = userCost

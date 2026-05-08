@@ -115,6 +115,7 @@
   }
 
   function recipeCard(r) {
+  console.log(r)
     const imgBlock = r.img
       ? `<img class="card-img" src="${esc(r.img)}" alt="${esc(r.recipeName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
          <div class="card-img-placeholder" style="display:none;">🍽️</div>`
