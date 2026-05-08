@@ -332,7 +332,7 @@ def initViews(app):
                     recipes.pop(recipe["recipeID"])
 
             equipmentCost = 0
-            recipeEquipment = recipe["equipment"].split(",")
+            recipeEquipment = recipe["equipment"].split(",") if recipe["equipment"] is not None else []
             for equipment in recipeEquipment:
                 equipmentCost += equipmentDict[equipment]["cost"]
 
