@@ -122,6 +122,8 @@
       : `<div class="card-img-placeholder">🍽️</div>`;
 
     const displayCost = r.userCost !== undefined ? r.userCost : (r.cost || 0);
+    const equipmentCost = r.userEquipmentCost !== undefined ? r.userEquipmentCost : (r.equipmentCost || 0);
+
     const costLabel = r.userCost !== undefined ? 'your cost' : 'total';
 
     const tags = r.tags
@@ -143,7 +145,7 @@
           ${tags ? `<div class="tags-row">${tags}</div>` : ''}
         </div>
         <div class="card-footer">
-          <span class="text-sm text-muted">🔪 $${(r.equipmentCost||0)} equipment</span>
+          <span class="text-sm text-muted">🔪 $${(equipmentCost)} equipment</span>
           <span class="btn btn-outline btn-sm">View Recipe →</span>
         </div>
       </a>`;
