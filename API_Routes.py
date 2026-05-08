@@ -17,6 +17,7 @@ def initViews(app):
         query = (select(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID, recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate,
                         func.aggregate_strings(recipes_n_equipmentTable.c.equipment, ",").label("equipment"))
                  .select_from(recipesTable).join(recipes_n_equipmentTable, recipesTable.c.recipeID == recipes_n_equipmentTable.c.recipeID, isouter=True)
+                 .where(recipesTable.c.recipeID == recipeID)
                  .group_by(recipesTable.c.recipeID, recipesTable.c.recipeName, recipesTable.c.userID, recipesTable.c.instructions, recipesTable.c.img, recipesTable.c.createdDate))
         recipesData = queryDatabase(query)
         if len(recipesData) == 0:
@@ -168,8 +169,8 @@ def initViews(app):
         if len(response) == 0:
             return "User does not exist.", 400
 
-        if len(ingredients) == 0 or ingredients == None:
-            return "Invalid Ingredients.", 400
+        if ingredients == None:
+            ingredients = {}
 
         query = select(users_n_ingredientsTable).where(users_n_ingredientsTable.c.userID == userID)
         ingredientList = queryDatabase(query)
@@ -206,8 +207,8 @@ def initViews(app):
         if len(response) == 0:
             return "User does not exist.", 400
 
-        if len(equipment) == 0 or equipment == None:
-            return "Invalid equipment.", 400
+        if equipment == None:
+            equipment = []
 
         query = select(users_n_equipmentTable).where(users_n_equipmentTable.c.userID == userID)
         equipmentData = queryDatabase(query)

@@ -1,0 +1,24 @@
+/* ============================================
+   recipes.css — Browse Recipes page
+   Filter panel, filter row/group
+   Requires: base.css
+   ============================================ */
+
+.filter-panel {
+  background: var(--warm-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+.filter-panel h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--brown);
+  margin-bottom: 1rem;
+  font-family: 'DM Sans', sans-serif;
+}
+.filter-row   { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; margin-bottom: 1rem; }
+.filter-group { flex: 1; min-width: 180px; }

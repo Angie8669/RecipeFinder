@@ -1,34 +1,245 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Recipe Finder</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/recipe.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+{% extends "layout.html" %}
+{% block title %}Recipe — RecipeFinder{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles/recipe.css') }}">{% endblock %}
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/recipe.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
-</head>
+{% block content %}
 
-<body>
-
-<div class="topnav">
-    <div class="leftnav">
-        <a class="navItem" href="/">Home</a>
-        <a class="navItem" href="/recipes">Recipes</a>
-    </div>
-    <div class="rightnav">
-        <a class="navItem" href="/login">Login</a>
-        <a class="navItem" href="/signup">Sign Up</a>
-    </div>
-
-</div>
-<div class="content">
-
+<div id="recipe-loading" class="loading-state" style="padding:5rem;">
+  <div class="spinner"></div>
+  <span>Loading recipe…</span>
 </div>
 
-</body>
+<div id="recipe-content" class="hidden">
 
-</html>
+  <!-- Hero Image -->
+  <div class="recipe-hero" id="recipe-hero">
+    <div class="recipe-hero-overlay">
+      <div class="recipe-hero-content">
+        <h1 id="recipe-name">…</h1>
+        <div class="recipe-meta-bar">
+          <span id="recipe-author-meta">👤 …</span>
+          <span id="recipe-date-meta">📅 …</span>
+          <span id="recipe-cost-meta"></span>
+        </div>
+      </div>
+    </div>
+  </div>
 
+  <!-- Action Bar -->
+  <div style="background:var(--warm-white); border-bottom:1px solid var(--border); padding:0.75rem 2rem;">
+    <div style="max-width:1100px; margin:0 auto; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap;">
+      <a href="/recipes" class="btn btn-ghost btn-sm">← Back to recipes</a>
+      <div class="flex gap-1">
+        <div id="tags-bar"></div>
+        <button class="fav-btn" id="fav-btn" onclick="toggleFavorite()" title="Favorite">♡</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Layout -->
+  <div class="recipe-layout">
+
+    <!-- Instructions -->
+    <div class="recipe-instructions">
+      <span class="section-eyebrow">Instructions</span>
+      <h2>How to make it</h2>
+      <div class="divider"></div>
+      <p class="instructions-text" id="recipe-instructions">…</p>
+    </div>
+
+    <!-- Sidebar: Ingredients + Equipment + Cost -->
+    <aside class="recipe-sidebar">
+
+      <!-- Ingredients -->
+      <div class="ingredients-card">
+        <div class="ingredients-card-header">Ingredients</div>
+        <ul class="ingredients-list" id="ingredients-list">
+          <li style="color:var(--brown); font-size:0.85rem;">Loading…</li>
+        </ul>
+        <div class="cost-summary" id="cost-summary"></div>
+      </div>
+
+      <!-- Equipment -->
+      <div class="equipment-card" id="equipment-card" style="display:none;">
+        <div class="equipment-header">🔪 Equipment Needed</div>
+        <ul class="equipment-list" id="equipment-list"></ul>
+      </div>
+
+    </aside>
+  </div>
+
+</div>
+
+<div id="recipe-error" class="hidden container" style="padding:4rem 2rem; text-align:center;">
+  <div class="empty-state-icon">😕</div>
+  <h3>Recipe not found</h3>
+  <p>This recipe may have been removed or doesn't exist.</p>
+  <a href="/recipes" class="btn btn-primary mt-2">Browse recipes</a>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const recipeID = window.location.pathname.split('/').pop();
+  let recipeData = null;
+
+  async function loadRecipe() {
+    try {
+      const params = new URLSearchParams();
+      if (user) params.set('userID', user.userID);
+      const res = await fetch(`/api/getRecipe/${recipeID}?${params}`);
+      if (!res.ok) throw new Error();
+      const recipe = await res.json();
+
+      if (!recipe || !recipe.recipeID) {
+        showError(); return;
+      }
+
+      recipeData = recipe;
+      renderRecipe(recipe);
+    } catch (e) {
+      showError();
+    }
+  }
+
+  function renderRecipe(r) {
+    document.title = `${r.recipeName} — RecipeFinder`;
+    document.getElementById('recipe-name').textContent = r.recipeName;
+    document.getElementById('recipe-author-meta').textContent = `👤 ${r.author || 'Unknown'}`;
+    document.getElementById('recipe-date-meta').textContent = `📅 ${formatDate(r.createdDate)}`;
+    document.getElementById('recipe-instructions').textContent = r.instructions || 'No instructions provided.';
+
+    // Hero image
+    const hero = document.getElementById('recipe-hero');
+    if (r.img) {
+      const img = document.createElement('img');
+      img.src = r.img;
+      img.alt = r.recipeName;
+      img.onerror = () => { img.remove(); setHeroPlaceholder(hero); };
+      hero.prepend(img);
+    } else {
+      setHeroPlaceholder(hero);
+    }
+
+
+    // Favorite button
+    const favBtn = document.getElementById('fav-btn');
+    if (!user) { favBtn.style.display = 'none'; }
+    else if (r.favorited) {
+      favBtn.classList.add('favorited');
+      favBtn.textContent = '♥';
+    }
+
+    // Cost
+    if (r.cost !== undefined) {
+      const el = document.getElementById('recipe-cost-meta');
+      const userCostStr = r.userCost !== undefined ? ` · <strong style="color:var(--amber)">$${r.userCost.toFixed(2)} your cost</strong>` : '';
+      el.innerHTML = `💵 $${r.cost.toFixed(2)} total${userCostStr}`;
+    }
+
+    // Ingredients
+    const list = document.getElementById('ingredients-list');
+    const ingredients = Object.values(r.ingredients || {});
+    if (ingredients.length === 0) {
+      list.innerHTML = '<li style="color:var(--brown);font-size:0.85rem;">No ingredients listed.</li>';
+    } else {
+      list.innerHTML = ingredients.map(ing => `
+        <li class="ingredient-item">
+          <span class="ingredient-name">${esc(ing.ingredientName)}</span>
+          <span class="ingredient-amount">${esc(parseFloat(ing.amount) || '')} ${esc(ing.measurement || '')}</span>
+        </li>`).join('');
+    }
+
+    // Cost summary
+    const costSummary = document.getElementById('cost-summary');
+    if (r.cost !== undefined) {
+      const userRow = r.userCost !== undefined ? `
+        <div class="cost-row" style="color:var(--terra);">
+          <span>Your ingredient cost</span>
+          <span>$${r.userCost.toFixed(2)}</span>
+        </div>` : '';
+      const equipRow = r.equipmentCost ? `
+        <div class="cost-row">
+          <span>Equipment</span>
+          <span>$${r.equipmentCost.toFixed(2)}</span>
+        </div>` : '';
+      costSummary.innerHTML = `
+        <div class="cost-row"><span>Total ingredient cost</span><span>$${r.cost.toFixed(2)}</span></div>
+        ${userRow}
+        ${equipRow}
+        <div class="cost-row total">
+          <span>You pay</span>
+          <span>$${(r.userCost !== undefined ? r.userCost : r.cost).toFixed(2)}</span>
+        </div>`;
+    } else {
+      costSummary.style.display = 'none';
+    }
+
+    // Equipment
+    if (r.equipment) {
+      const equipList = document.getElementById('equipment-list');
+      const items = r.equipment.split(',').filter(Boolean);
+      if (items.length) {
+        equipList.innerHTML = items.map(e => `<li><span class="tag">${esc(e.trim())}</span></li>`).join('');
+        document.getElementById('equipment-card').style.display = 'block';
+      }
+    }
+
+    // Tags
+    const tagsBar = document.getElementById('tags-bar');
+    if (r.tags) {
+      tagsBar.innerHTML = r.tags.split(',').filter(Boolean)
+        .map(t => `<span class="tag">${esc(t.trim())}</span>`).join('');
+      tagsBar.style.display = 'flex';
+      tagsBar.style.gap = '0.4rem';
+    }
+
+    // Show content
+    document.getElementById('recipe-loading').style.display = 'none';
+    document.getElementById('recipe-content').classList.remove('hidden');
+  }
+
+  function setHeroPlaceholder(hero) {
+    const ph = document.createElement('div');
+    ph.className = 'recipe-hero-placeholder';
+    ph.textContent = '🍽️';
+    hero.prepend(ph);
+  }
+
+  async function toggleFavorite() {
+    if (!user) { window.location.href = '/login'; return; }
+    const btn = document.getElementById('fav-btn');
+    const isFav = btn.classList.contains('favorited');
+    const endpoint = isFav ? '/api/setUnfavorite' : '/api/setFavorite';
+
+    try {
+      await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userID: user.userID, recipeID })
+      });
+      btn.classList.toggle('favorited');
+      btn.textContent = btn.classList.contains('favorited') ? '♥' : '♡';
+    } catch (e) { /* silent */ }
+  }
+
+  function showError() {
+    document.getElementById('recipe-loading').style.display = 'none';
+    document.getElementById('recipe-error').classList.remove('hidden');
+  }
+
+  function formatDate(str) {
+    if (!str) return '';
+    const d = new Date(str);
+    return isNaN(d) ? str : d.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  loadRecipe();
+</script>
+{% endblock %}

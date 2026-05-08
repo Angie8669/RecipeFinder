@@ -1,47 +1,158 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Recipe Finder</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/recipes.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+{% extends "layout.html" %}
+{% block title %}Browse Recipes — RecipeFinder{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles/recipes.css') }}">{% endblock %}
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/recipes.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
-</head>
+{% block content %}
 
-<body>
+<div class="page-section">
+  <div class="container">
 
-<div class="topnav">
-    <div class="leftnav">
-        <a class="navItem" href="/">Home</a>
-        <a class="navItem" href="/recipes">Recipes</a>
-    </div>
-    <div class="rightnav">
-        <a class="navItem" href="/login">Login</a>
-        <a class="navItem" href="/signup">Sign Up</a>
+    <!-- Page Header -->
+    <div class="section-heading mb-3">
+      <div>
+        <span class="section-eyebrow">Community</span>
+        <h2>Browse Recipes</h2>
+      </div>
+      <a href="/recipeForm" class="btn btn-primary">+ Add Recipe</a>
     </div>
 
+    <!-- Search & Filters -->
+    <div class="filter-panel mb-3">
+      <div class="filter-row" style="margin-bottom:1rem;">
+        <div class="search-bar" style="flex:2; min-width:240px;">
+          <input type="text" id="search-input" placeholder="Search recipes by name…" oninput="debouncedSearch()" />
+          <button onclick="loadRecipes()">🔍</button>
+        </div>
+      </div>
+
+      <div class="filter-row">
+        <div class="filter-group">
+          <label class="form-label">Tags (comma separated)</label>
+          <input class="form-control" type="text" id="tags-input" placeholder="e.g. vegan, quick, spicy" oninput="debouncedSearch()" />
+        </div>
+        <div class="filter-group" style="max-width:160px;">
+          <label class="form-label">Min cost ($)</label>
+          <input class="form-control" type="number" id="cost-min" placeholder="0" min="0" step="0.50" oninput="debouncedSearch()" />
+        </div>
+        <div class="filter-group" style="max-width:160px;">
+          <label class="form-label">Max cost ($)</label>
+          <input class="form-control" type="number" id="cost-max" placeholder="Any" min="0" step="0.50" oninput="debouncedSearch()" />
+        </div>
+        <div style="align-self:flex-end;">
+          <button class="btn btn-secondary" onclick="clearFilters()">Clear</button>
+        </div>
+      </div>
+
+      <div id="user-cost-note" class="hidden" style="margin-top:0.5rem;">
+        <span class="tag tag-terra">💵 Costs shown are <em>your</em> out-of-pocket cost based on your pantry</span>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="recipes-container" class="recipes-grid">
+      <div class="loading-state" style="grid-column:1/-1;">
+        <div class="spinner"></div>
+        <span>Loading recipes…</span>
+      </div>
+    </div>
+
+  </div>
 </div>
-<div class="content">
-    <h1>Recipes</h1>
-    <div class="search-container">
-        <h2>Search</h2>
-        <label for="recipeName">Recipe Name:</label>
-        <input id="recipeName" type="text" class="search" placeholder="Search by Recipe Name.." name="search">
-        <label for="tags">Tags:</label>
-        <input id="tags" type="text" placeholder="Enter tags..." name="tags">
-        <label for="min">Minimum Cost:</label>
-        <input id="min" type="number" step="0.01" placeholder="Minimum Cost" name="min">
-        <label for="max">Maximum Cost:</label>
-        <input id="max" type="number" step="0.01" placeholder="Maximum Cost" name="max">
-        <button id="search">Search</button>
-    </div>
-    <div id="recipeList"></div>
-</div>
 
-</body>
+{% endblock %}
 
-</html>
+{% block scripts %}
+<script>
+  if (user) document.getElementById('user-cost-note').classList.remove('hidden');
 
+  let debounceTimer;
+  function debouncedSearch() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(loadRecipes, 380);
+  }
+
+  function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('tags-input').value = '';
+    document.getElementById('cost-min').value = '';
+    document.getElementById('cost-max').value = '';
+    loadRecipes();
+  }
+
+  async function loadRecipes() {
+    const container = document.getElementById('recipes-container');
+    container.innerHTML = `<div class="loading-state" style="grid-column:1/-1;"><div class="spinner"></div><span>Loading…</span></div>`;
+
+    const params = new URLSearchParams({
+      recipeName: document.getElementById('search-input').value.trim(),
+      tags: document.getElementById('tags-input').value.trim(),
+    });
+    const costMin = document.getElementById('cost-min').value;
+    const costMax = document.getElementById('cost-max').value;
+    if (costMin) params.set('costMin', costMin);
+    if (costMax) params.set('costMax', costMax);
+    if (user) params.set('userID', user.userID);
+
+    try {
+      const res = await fetch(`/api/getRecipes?${params}`);
+      const data = await res.json();
+      const recipes = Object.values(data);
+
+      if (recipes.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1;">
+            <div class="empty-state-icon">🔍</div>
+            <h3>No recipes found</h3>
+            <p>Try adjusting your search or filters.</p>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = recipes.map(r => recipeCard(r)).join('');
+    } catch (e) {
+      container.innerHTML = `<div class="alert alert-error" style="grid-column:1/-1;">Failed to load recipes. Please try again.</div>`;
+    }
+  }
+
+  function recipeCard(r) {
+    const imgBlock = r.img
+      ? `<img class="card-img" src="${esc(r.img)}" alt="${esc(r.recipeName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+         <div class="card-img-placeholder" style="display:none;">🍽️</div>`
+      : `<div class="card-img-placeholder">🍽️</div>`;
+
+    const displayCost = r.userCost !== undefined ? r.userCost : (r.cost || 0);
+    const costLabel = r.userCost !== undefined ? 'your cost' : 'total';
+
+    const tags = r.tags
+      ? r.tags.split(',').filter(Boolean).slice(0, 3)
+          .map(t => `<span class="tag">${esc(t.trim())}</span>`).join('')
+      : '';
+
+    return `
+      <a href="/recipe/${r.recipeID}" class="card" style="display:block;">
+        ${imgBlock}
+        <div class="card-body">
+          <h3 class="card-title">${esc(r.recipeName)}</h3>
+          <div class="card-meta">
+            <span>👤 ${esc(r.author || 'Unknown')}</span>
+            <span class="cost-badge ${r.userCost !== undefined ? 'user-cost' : ''}">
+              $${displayCost} ${costLabel}
+            </span>
+          </div>
+          ${tags ? `<div class="tags-row">${tags}</div>` : ''}
+        </div>
+        <div class="card-footer">
+          <span class="text-sm text-muted">🔪 $${(r.equipmentCost||0)} equipment</span>
+          <span class="btn btn-outline btn-sm">View Recipe →</span>
+        </div>
+      </a>`;
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  loadRecipes();
+</script>
+{% endblock %}

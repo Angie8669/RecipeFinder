@@ -1,22 +1,55 @@
-.currentDisplay {
-    display: flex;
-    width: 70%;
+/* ============================================
+   profile.css — User Profile page
+   Profile header, avatar, tab bar, tab content
+   Requires: base.css
+   ============================================ */
+
+/* ── Profile header ── */
+.profile-header {
+  background: linear-gradient(135deg, var(--charcoal), var(--brown));
+  color: var(--cream);
+  padding: 3rem 2rem;
+}
+.profile-header-inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 2rem; }
+
+.avatar {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--amber);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Playfair Display', serif;
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--ink);
+  flex-shrink: 0;
+  border: 3px solid rgba(250,247,242,0.3);
 }
 
-.row {
-    display: flex;
-    width: 100%;
-}
+.profile-info h1 { color: var(--cream); font-size: 1.8rem; }
+.profile-info p  { color: rgba(250,247,242,0.65); font-size: 0.9rem; margin-top: 0.25rem; }
 
-.content {
-    display: flex;
-    width: 100%;
-}
+/* ── Tab bar ── */
+.profile-tabs { border-bottom: 2px solid var(--border); display: flex; gap: 0; overflow-x: auto; }
 
-.img {
-    width: 200px;
+.tab-btn {
+  padding: 1rem 1.5rem;
+  border: none;
+  background: transparent;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--brown);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  white-space: nowrap;
+  transition: color var(--transition), border-color var(--transition);
 }
+.tab-btn.active          { color: var(--terra); border-bottom-color: var(--terra); }
+.tab-btn:hover:not(.active) { color: var(--ink); }
 
-.rightCol {
-    width: 30%;
-}
+.tab-content        { display: none; }
+.tab-content.active { display: block; }

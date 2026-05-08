@@ -1,34 +1,157 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Recipe Finder</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+{% extends "layout.html" %}
+{% block title %}RecipeFinder — Discover & Share Recipes{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles/index.css') }}">{% endblock %}
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/search.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
-</head>
+{% block content %}
 
-<body>
-
-<div class="topnav">
-    <div class="leftnav">
-        <a class="navItem" href="/">Home</a>
-        <a class="navItem" href="/recipes">Recipes</a>
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-inner">
+    <span class="hero-eyebrow">✦ Your culinary companion</span>
+    <h1>Discover recipes built<br><em>from what you have</em></h1>
+    <p>Search thousands of community recipes filtered by your pantry ingredients, budget, and equipment — no guesswork, just great meals.</p>
+    <div class="hero-actions">
+      <a href="/recipes" class="btn btn-primary btn-lg">Browse Recipes</a>
+      <a href="/signup" class="btn btn-outline btn-lg" id="hero-signup-btn">Create Free Account</a>
     </div>
-    <div class="rightnav">
-        <a class="navItem" href="/login">Login</a>
-        <a class="navItem" href="/signup">Sign Up</a>
+  </div>
+</section>
+
+<!-- Feature Highlights -->
+<section class="page-section" style="background: var(--warm-white); border-bottom: 1px solid var(--border);">
+  <div class="container">
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 2rem; text-align: center;">
+
+      <div style="padding: 1.5rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🥪</div>
+        <h3 style="font-size: 1.05rem; margin-bottom: 0.4rem;">Pantry Matching</h3>
+        <p style="font-size: 0.88rem; color: var(--brown); line-height: 1.6;">Tell us what ingredients you already own we'll show recipes you can make for less.</p>
+      </div>
+
+      <div style="padding: 1.5rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">💵</div>
+        <h3 style="font-size: 1.05rem; margin-bottom: 0.4rem;">Budget Filtering</h3>
+        <p style="font-size: 0.88rem; color: var(--brown); line-height: 1.6;">Filter recipes by total cost or your personal cost after accounting for what you own.</p>
+      </div>
+
+      <div style="padding: 1.5rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">🔪</div>
+        <h3 style="font-size: 1.05rem; margin-bottom: 0.4rem;">Equipment-Aware</h3>
+        <p style="font-size: 0.88rem; color: var(--brown); line-height: 1.6;">Know what kitchen tools you have. We only show recipes you can actually make.</p>
+      </div>
+
+      <div style="padding: 1.5rem;">
+        <div style="font-size: 2.5rem; margin-bottom: 0.75rem;">📖</div>
+        <h3 style="font-size: 1.05rem; margin-bottom: 0.4rem;">Community Recipes</h3>
+        <p style="font-size: 0.88rem; color: var(--brown); line-height: 1.6;">Share your own recipes and discover meals created by home cooks just like you.</p>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Recent Recipes Preview -->
+<section class="page-section">
+  <div class="container">
+    <div class="section-heading">
+      <div>
+        <span class="section-eyebrow">Community Recipes</span>
+        <h2>What's cooking lately</h2>
+      </div>
+      <a href="/recipes" class="btn btn-outline">View all recipes →</a>
     </div>
 
-</div>
-<div class="content">
-    <h1>Recipe Finder</h1>
-</div>
+    <div id="home-recipes" class="recipes-grid">
+      <div class="loading-state" style="grid-column:1/-1;">
+        <div class="spinner"></div>
+        <span>Fetching recipes…</span>
+      </div>
+    </div>
+  </div>
+</section>
 
-</body>
+<!-- CTA -->
+<section class="page-section" style="background: var(--parchment); border-top: 1px solid var(--border);">
+  <div class="container" style="text-align:center; max-width: 600px;">
+    <span class="section-eyebrow">Get started free</span>
+    <h2 style="margin-bottom:0.75rem;">Ready to cook smarter?</h2>
+    <p style="color:var(--brown); margin-bottom:2rem;">Create an account to save favorites, track your pantry, and share your own recipes with the community.</p>
+    <a href="/signup" class="btn btn-primary btn-lg" id="cta-signup-btn">Create your account</a>
+  </div>
+</section>
 
-</html>
+{% endblock %}
 
+{% block scripts %}
+<script>
+  // Hide sign-up CTAs if logged in
+  if (user) {
+    const btns = document.querySelectorAll('#hero-signup-btn, #cta-signup-btn');
+    btns.forEach(b => b.style.display = 'none');
+  }
+
+  // Load a preview of recent recipes
+  async function loadHomeRecipes() {
+    const container = document.getElementById('home-recipes');
+    try {
+      const params = new URLSearchParams({ recipeName: '' });
+      if (user) params.set('userID', user.userID);
+      const res = await fetch(`/api/getRecipes?${params}`);
+      const data = await res.json();
+      const recipes = Object.values(data).slice(0, 6);
+      console.log(recipes)
+
+      if (recipes.length === 0) {
+        container.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1;">
+            <div class="empty-state-icon">🍽️</div>
+            <h3>No recipes yet</h3>
+            <p>Be the first to share a recipe!</p>
+            <a href="/recipeForm" class="btn btn-primary">Add a Recipe</a>
+          </div>`;
+        return;
+      }
+
+      container.innerHTML = recipes.map(r => recipeCard(r)).join('');
+    } catch (e) {
+      container.innerHTML = `<div class="alert alert-error" style="grid-column:1/-1;">Failed to load recipes.</div>`;
+        console.log(e)
+    }
+  }
+
+  function recipeCard(r) {
+    console.log(r.cost)
+    const img = r.img
+      ? `<img class="card-img" src="${escHtml(r.img)}" alt="${escHtml(r.recipeName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+         <div class="card-img-placeholder" style="display:none;">🍽️</div>`
+      : `<div class="card-img-placeholder">🍽️</div>`;
+
+    const cost = r.userCost !== undefined
+      ? `<span class="cost-badge user-cost">💵 $${r.userCost} your cost</span>`
+      : `<span class="cost-badge">💵 $${(r.cost)}</span>`;
+
+    const tags = r.tags ? r.tags.split(',').filter(Boolean).slice(0,3).map(t =>
+      `<span class="tag">${escHtml(t.trim())}</span>`).join('') : '';
+
+    return `
+      <a href="/recipe/${r.recipeID}" class="card" style="display:block; color:inherit;">
+        ${img}
+        <div class="card-body">
+          <h3 class="card-title">${escHtml(r.recipeName)}</h3>
+          <div class="card-meta">
+            <span>👤 ${escHtml(r.author || 'Unknown')}</span>
+            ${cost}
+          </div>
+          ${tags ? `<div class="tags-row">${tags}</div>` : ''}
+        </div>
+      </a>`;
+  }
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  loadHomeRecipes();
+</script>
+{% endblock %}

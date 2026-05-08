@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}RecipeFinder{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/base.css') }}" />
+  {% block head %}{% endblock %}
+</head>
+<body>
+
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <a href="/" class="nav-brand">
+        <span class="brand-icon">🍴</span>
+        RecipeFinder
+      </a>
+
+      <ul class="nav-links">
+        <li><a href="/recipes" {% if request.path == '/recipes' %}class="active"{% endif %}>Browse Recipes</a></li>
+        <li><a href="/recipeForm" {% if request.path == '/recipeForm' %}class="active"{% endif %}>Add Recipe</a></li>
+        <li id="nav-profile-link" class="hidden">
+          <a href="/profile" {% if request.path == '/profile' %}class="active"{% endif %}>My Profile</a>
+        </li>
+        <li id="nav-ingredient-link" class="hidden">
+          <a href="/ingredientListForm">My Pantry</a>
+        </li>
+      </ul>
+
+      <div class="nav-actions">
+        <div id="nav-logged-out" class="flex gap-1">
+          <a href="/login" class="btn btn-ghost btn-sm">Log in</a>
+          <a href="/signup" class="btn btn-primary btn-sm">Sign up</a>
+        </div>
+        <div id="nav-logged-in" class="hidden flex gap-1">
+          <span id="nav-username" class="text-sm" style="color:var(--brown); padding:0.5rem;"></span>
+          <button class="btn btn-secondary btn-sm" onclick="logout()">Log out</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Page Content -->
+  {% block content %}{% endblock %}
+
+  <!-- Footer -->
+  <footer class="footer">
+    <p>© 2026 RecipeFinder &mdash; Cook something delicious today</p>
+  </footer>
+
+  <script>
+    // Auth state management
+    const user = JSON.parse(localStorage.getItem('user') || 'null');
+
+    if (user) {
+      document.getElementById('nav-logged-out').classList.add('hidden');
+      document.getElementById('nav-logged-in').classList.remove('hidden');
+      document.getElementById('nav-username').textContent = user.username;
+      document.getElementById('nav-profile-link').classList.remove('hidden');
+      document.getElementById('nav-ingredient-link').classList.remove('hidden');
+    }
+
+    function logout() {
+      localStorage.removeItem('user');
+      window.location.href = '/';
+    }
+  </script>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

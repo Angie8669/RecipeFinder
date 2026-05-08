@@ -1,41 +1,121 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Recipe Finder - Login</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/login.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Log In — RecipeFinder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/base.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/auth.css') }}" />
 </head>
-
 <body>
-    <div class="topnav">
-        <div class="leftnav">
-            <a class="navItem" href="/">Home</a>
-            <a class="navItem" href="/recipes">Recipes</a>
-        </div>
-        <div class="rightnav">
-            <a class="navItem" href="/login">Login</a>
-            <a class="navItem" href="/signup">Sign Up</a>
-        </div>
 
-    </div>
-    <div class="content">
-        <div id="errorMessage"></div>
-        <form id="loginForm">
-            <label>Username</label>
-            <input type="text" placeholder="Username" name="username"/>
-            <br/>
-            <label>Password</label>
-            <input type="password" placeholder="Password" name="password"/>
-            <br/>
-            <input type="submit" value="Submit"/>
-        </form>
-    </div>
+<div class="auth-page">
 
+  <!-- Left Panel -->
+  <div class="auth-panel">
+    <div class="auth-panel-inner">
+      <a href="/" style="color: var(--amber); font-family: 'Playfair Display', serif; font-size:1.2rem; font-weight:700; display:block; margin-bottom:2rem;">🍴 RecipeFinder</a>
+      <h2>Welcome back, chef</h2>
+      <p>Log in to access your saved recipes, manage your pantry, and discover meals tailored to what you already have at home.</p>
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="auth-feature-icon">🥪</div>
+          <p class="auth-feature-text">Filter recipes by your pantry to see what you can make today</p>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">❤️</div>
+          <p class="auth-feature-text">Save your favorite recipes for quick access anytime</p>
+        </div>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">📖</div>
+          <p class="auth-feature-text">Share your own recipes with the community</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Form Side -->
+  <div class="auth-form-side">
+    <div class="auth-form-card">
+      <div class="brand">🍴 RecipeFinder</div>
+      <h2>Log in</h2>
+      <p class="auth-subtitle">Don't have an account? <a href="/signup">Sign up free</a></p>
+
+      <div id="login-alert" class="alert alert-error hidden"></div>
+
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input class="form-control" type="text" id="username" placeholder="your_username" autocomplete="username" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-control" type="password" id="password" placeholder="••••••••" autocomplete="current-password" />
+      </div>
+
+      <button class="btn btn-primary w-full btn-lg mt-2" id="login-btn" onclick="login()">
+        Log in
+      </button>
+
+      <div class="auth-switch mt-2">
+        New to RecipeFinder? <a href="/signup">Create an account →</a>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // Redirect if already logged in
+  if (localStorage.getItem('user')) window.location.href = '/profile';
+
+  async function login() {
+    const btn = document.getElementById('login-btn');
+    const alert = document.getElementById('login-alert');
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    alert.classList.add('hidden');
+
+    if (!username || !password) {
+      showAlert('Please enter your username and password.');
+      return;
+    }
+
+    btn.textContent = 'Logging in…';
+    btn.disabled = true;
+
+    try {
+      const params = new URLSearchParams({ username, password });
+      const res = await fetch(`/authenticate?${params}`);
+
+      if (res.ok) {
+        const user = await res.json();
+        localStorage.setItem('user', JSON.stringify(user));
+        window.location.href = '/profile';
+      } else {
+        const msg = await res.text();
+        showAlert(msg || 'Incorrect username or password.');
+      }
+    } catch (e) {
+      showAlert('Unable to connect. Please try again.');
+    } finally {
+      btn.textContent = 'Log in';
+      btn.disabled = false;
+    }
+  }
+
+  function showAlert(msg) {
+    const el = document.getElementById('login-alert');
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+
+  // Enter key support
+  document.addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+</script>
 
 </body>
 </html>

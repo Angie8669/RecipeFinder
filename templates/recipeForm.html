@@ -1,60 +1,275 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Create New Recipe</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/recipeForm.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+{% extends "layout.html" %}
+{% block title %}Add a Recipe — RecipeFinder{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles/recipe-form.css') }}">{% endblock %}
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/recipeForm.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
+{% block content %}
 
-</head>
-<body>
-    <div class="topnav">
-        <div class="leftnav">
-            <a class="navItem" href="/">Home</a>
-            <a class="navItem" href="/recipes">Recipes</a>
-        </div>
-        <div class="rightnav">
-            <a class="navItem" href="/login">Login</a>
-            <a class="navItem" href="/signup">Sign Up</a>
-        </div>
+<div class="form-page">
+  <div style="margin-bottom:2rem;">
+    <span class="section-eyebrow">Share with the community</span>
+    <h1 style="font-size:2rem;">Add a Recipe</h1>
+  </div>
 
-    </div>
-    <div class="content">
-        <div class="recipeForm">
-            <div class="row">
-                <label for="recipeName">Recipe Name</label>
-                <input id="recipeName" type="text" placeholder="Insert recipe name.">
-                <label for="imageURL">Image URL</label>
-                <input id="imageURL" type="text" placeholder="Insert URL for image." name="imageURL"/>
-                <img src="" id="imagePreview"/>
-            </div>
-            <div class="row">
-                <div class="column">
-                    <div id="ingredientList"></div>
-                    <div>
-                        <button id="addIngredient">Add Ingredient</button>
-                    </div>
-                </div>
-                <div class="column">
-                    <div id="equipmentList"></div>
-                    <div>
-                        <button id="addEquipment">Add Equipment</button>
-                    </div>
-                </div>
-            </div>
-            <div class="row">
-                <textarea id="instructions"></textarea>
-                <label for="tags">Tags: </label>
-                <input id="tags" type="text" placeholder="Insert tags." name="tags"/>
-                <button id="submit">Create Recipe</button>
-            </div>
-        </div>
+  <div id="auth-required" class="alert alert-info hidden">
+    You need to <a href="/login" style="font-weight:600; color:var(--terra);">log in</a> to add a recipe.
+  </div>
+
+  <div id="form-wrapper">
+
+    <!-- Basic Info -->
+    <div class="form-card">
+      <h3>Basic Information</h3>
+
+      <div class="form-group">
+        <label class="form-label" for="recipeName">Recipe Name *</label>
+        <input class="form-control" type="text" id="recipeName" placeholder="e.g. Classic Spaghetti Carbonara" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="imageURL">Image URL</label>
+        <input class="form-control" type="url" id="imageURL" placeholder="https://example.com/image.jpg" />
+        <p class="form-hint">Paste a direct link to an image (optional but highly recommended)</p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="tags">Tags</label>
+        <input class="form-control" type="text" id="tags" placeholder="vegan, quick, dinner, italian" />
+        <p class="form-hint">Separate tags with commas — helps others discover your recipe</p>
+      </div>
     </div>
 
+    <!-- Instructions -->
+    <div class="form-card">
+      <h3>Instructions *</h3>
+      <div class="form-group" style="margin-bottom:0;">
+        <textarea class="form-control" id="instructions" rows="8" placeholder="Walk through each step of making your recipe. Be as detailed as you like!"></textarea>
+      </div>
+    </div>
 
-</body>
-</html>
+    <!-- Ingredients -->
+    <div class="form-card">
+      <h3>Ingredients *</h3>
+
+      <div id="ingredients-loading" class="loading-state" style="padding:1.5rem 0;">
+        <div class="spinner"></div>
+        <span>Loading ingredients…</span>
+      </div>
+
+      <div id="ingredients-section" class="hidden">
+        <div class="search-bar mb-2">
+          <input type="text" id="ingredient-search" placeholder="Search ingredients…" oninput="filterIngredients()" />
+          <button onclick="filterIngredients()">🔍</button>
+        </div>
+
+        <div id="ingredients-available" style="max-height:260px; overflow-y:auto; border:1px solid var(--border); border-radius:8px; padding:0.5rem;"></div>
+
+        <div class="mt-2">
+          <h4 style="font-size:0.85rem; color:var(--brown); margin-bottom:0.75rem; font-family:'DM Sans',sans-serif; text-transform:uppercase; letter-spacing:0.08em;">Selected Ingredients</h4>
+          <div id="selected-ingredients">
+            <p class="text-muted text-sm">No ingredients selected yet.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Equipment -->
+    <div class="form-card">
+      <h3>Equipment</h3>
+
+      <div id="equipment-loading" class="loading-state" style="padding:1.5rem 0;">
+        <div class="spinner"></div>
+        <span>Loading equipment…</span>
+      </div>
+
+      <div id="equipment-section" class="hidden">
+        <div id="equipment-available" style="display:flex; flex-wrap:wrap; gap:0.5rem;"></div>
+      </div>
+    </div>
+
+    <!-- Alert -->
+    <div id="form-alert" class="alert hidden"></div>
+
+    <!-- Submit -->
+    <div style="display:flex; gap:1rem; justify-content:flex-end;">
+      <a href="/recipes" class="btn btn-secondary">Cancel</a>
+      <button class="btn btn-primary btn-lg" id="submit-btn" onclick="submitRecipe()">Publish Recipe</button>
+    </div>
+
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  if (!user) {
+    document.getElementById('auth-required').classList.remove('hidden');
+    document.getElementById('form-wrapper').style.display = 'none';
+  }
+
+  let allIngredients = [];
+  let allEquipment = [];
+  const selectedIngredients = {}; // ingredientID -> {ingredientID, measurement, amount, ingredientName, possibleMeasurements}
+  const selectedEquipment = new Set();
+
+  async function loadFormData() {
+    try {
+      const [ingRes, eqRes] = await Promise.all([
+        fetch('/api/getAllIngredients'),
+        fetch('/api/getAllEquipment')
+      ]);
+      allIngredients = await ingRes.json();
+      allEquipment = await eqRes.json();
+
+      renderIngredients(allIngredients);
+      renderEquipment(allEquipment);
+
+      document.getElementById('ingredients-loading').style.display = 'none';
+      document.getElementById('equipment-loading').style.display = 'none';
+      document.getElementById('ingredients-section').classList.remove('hidden');
+      document.getElementById('equipment-section').classList.remove('hidden');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function filterIngredients() {
+    const q = document.getElementById('ingredient-search').value.toLowerCase();
+    const filtered = allIngredients.filter(i => i.ingredientName.toLowerCase().includes(q));
+    renderIngredients(filtered);
+  }
+
+  function renderIngredients(list) {
+    const container = document.getElementById('ingredients-available');
+    container.innerHTML = list.map(ing => {
+      const checked = selectedIngredients[ing.ingredientID] !== undefined;
+      return `
+        <div class="ingredient-checkbox-row">
+          <label class="checkbox-wrap">
+            <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleIngredient(${ing.ingredientID}, this.checked)" />
+            <span class="checkmark"></span>
+          </label>
+          <span style="flex:1;">${esc(ing.ingredientName)}</span>
+          <span style="font-size:0.8rem; color:var(--brown);">$${(ing.cost||0)}</span>
+        </div>`;
+    }).join('') || '<p class="text-muted text-sm" style="padding:0.5rem;">No ingredients found.</p>';
+  }
+
+  function toggleIngredient(id, checked) {
+    const ing = allIngredients.find(i => i.ingredientID === id);
+    if (!ing) return;
+    if (checked) {
+      selectedIngredients[id] = { ingredientID: id, ingredientName: ing.ingredientName, measurement: '', amount: '', possibleMeasurements: ing.possibleMeasurements };
+    } else {
+      delete selectedIngredients[id];
+    }
+    renderSelectedIngredients();
+  }
+
+  function renderSelectedIngredients() {
+    const container = document.getElementById('selected-ingredients');
+    const entries = Object.values(selectedIngredients);
+    if (entries.length === 0) {
+      container.innerHTML = '<p class="text-muted text-sm">No ingredients selected yet.</p>';
+      return;
+    }
+    container.innerHTML = entries.map(ing => {
+      const measureOpts = ing.possibleMeasurements
+        ? ['', ...ing.possibleMeasurements.split(',').filter(Boolean)].map(m =>
+            `<option value="${esc(m)}">${esc(m) || '— unit —'}</option>`).join('')
+        : '<option value="">— unit —</option>';
+
+      return `
+        <div class="ingredient-row" id="sel-ing-${ing.ingredientID}">
+          <span style="font-weight:500;">${esc(ing.ingredientName)}</span>
+          <input class="form-control" type="number" placeholder="Amount" min="0" step="any"
+            value="${esc(ing.amount)}"
+            onchange="selectedIngredients[${ing.ingredientID}].amount = this.value"
+            style="max-width:100px;" />
+          <select class="form-control" style="max-width:130px;"
+            onchange="selectedIngredients[${ing.ingredientID}].measurement = this.value">
+            ${measureOpts}
+          </select>
+          <button class="btn-icon" onclick="toggleIngredient(${ing.ingredientID}, false); renderIngredients(allIngredients.filter(i => i.ingredientName.toLowerCase().includes(document.getElementById('ingredient-search').value.toLowerCase())));" title="Remove">✕</button>
+        </div>`;
+    }).join('');
+  }
+
+  function renderEquipment(list) {
+    const container = document.getElementById('equipment-available');
+    container.innerHTML = list.map(eq => `
+      <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.3rem 0.6rem;border:1.5px solid var(--border);border-radius:20px;font-size:0.85rem;transition:all var(--transition);"
+        id="eq-label-${esc(eq.equipment)}">
+        <input type="checkbox" style="accent-color:var(--terra);" onchange="toggleEquipment('${esc(eq.equipment)}', this.checked)" />
+        ${esc(eq.equipment)}
+      </label>`).join('');
+  }
+
+  function toggleEquipment(eq, checked) {
+    if (checked) selectedEquipment.add(eq);
+    else selectedEquipment.delete(eq);
+  }
+
+  async function submitRecipe() {
+    const btn = document.getElementById('submit-btn');
+    const alertEl = document.getElementById('form-alert');
+    alertEl.classList.add('hidden');
+
+    const recipeName = document.getElementById('recipeName').value.trim();
+    const imageURL = document.getElementById('imageURL').value.trim();
+    const instructions = document.getElementById('instructions').value.trim();
+    const tags = document.getElementById('tags').value.trim();
+
+    if (!recipeName) return showAlert('error', 'Please enter a recipe name.');
+    if (!instructions) return showAlert('error', 'Please enter the instructions.');
+    if (Object.keys(selectedIngredients).length === 0) return showAlert('error', 'Please add at least one ingredient.');
+
+    btn.textContent = 'Publishing…';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/api/createRecipe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userID: user.userID,
+          recipeName,
+          imageURL: imageURL || null,
+          instructions,
+          ingredients: Object.values(selectedIngredients),
+          equipment: [...selectedEquipment],
+          tags
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        window.location.href = `/recipe/${data.recipeID}`;
+      } else {
+        const msg = await res.text();
+        showAlert('error', msg || 'Failed to create recipe. Please try again.');
+      }
+    } catch (e) {
+      showAlert('error', 'Connection error. Please try again.');
+    } finally {
+      btn.textContent = 'Publish Recipe';
+      btn.disabled = false;
+    }
+  }
+
+  function showAlert(type, msg) {
+    const el = document.getElementById('form-alert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  if (user) loadFormData();
+</script>
+{% endblock %}

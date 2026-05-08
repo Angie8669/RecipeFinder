@@ -1,38 +1,106 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Recipe Finder</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/equipmentListForm.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+{% extends "layout.html" %}
+{% block title %}My Equipment — RecipeFinder{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles/list-form.css') }}">{% endblock %}
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/equipmentListForm.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
-</head>
+{% block content %}
 
-<body>
-
-<div class="topnav">
-    <div class="leftnav">
-        <a class="navItem" href="/">Home</a>
-        <a class="navItem" href="/recipes">Recipes</a>
-    </div>
-    <div class="rightnav">
-        <a class="navItem" href="/login">Login</a>
-        <a class="navItem" href="/signup">Sign Up</a>
+<div class="page-section">
+  <div class="container-narrow">
+    <div style="margin-bottom:2rem;">
+      <span class="section-eyebrow">Kitchen Setup</span>
+      <h1 style="font-size:2rem;">My Equipment</h1>
+      <p style="color:var(--brown); margin-top:0.5rem;">Select the kitchen tools you own so RecipeFinder can factor in equipment costs accurately.</p>
     </div>
 
+    <div id="auth-required" class="alert alert-info hidden">
+      You need to <a href="/login" style="font-weight:600; color:var(--terra);">log in</a> to manage your equipment.
+    </div>
+
+    <div id="equipment-wrapper">
+      <div class="list-builder">
+        <div class="list-builder-header">
+          <h3>Kitchen Equipment</h3>
+        </div>
+        <div class="list-builder-body" id="equipment-list">
+          <div class="loading-state"><div class="spinner"></div><span>Loading equipment…</span></div>
+        </div>
+      </div>
+
+      <div id="save-alert" class="alert hidden mt-2"></div>
+
+      <div style="display:flex; gap:1rem; justify-content:flex-end; margin-top:1.5rem;">
+        <a href="/profile" class="btn btn-secondary">← Back to Profile</a>
+        <button class="btn btn-primary btn-lg" onclick="save()">Save Equipment</button>
+      </div>
+    </div>
+  </div>
 </div>
-<div class="content">
-    <div id="equipmentList">
 
-    </div>
-    <button id="addEquipment">Add Equipment</button>
-    <button id="submit">Update Equipment</button>
-</div>
+{% endblock %}
 
-</body>
+{% block scripts %}
+<script>
+  const user = JSON.parse(localStorage.getItem('user') || 'null');
 
-</html>
+  if (!user) {
+    document.getElementById('auth-required').classList.remove('hidden');
+    document.getElementById('equipment-wrapper').style.display = 'none';
+  } else {
+    init();
+  }
 
+  let allEquipment = [];
+  let userEquipment = new Set();
+
+  async function init() {
+    const [eqRes, userEqRes] = await Promise.all([
+      fetch('/api/getAllEquipment'),
+      fetch(`/api/getEquipmentList/${user.userID}`)
+    ]);
+    allEquipment = await eqRes.json();
+    const userEq = await userEqRes.json();
+    userEquipment = new Set(userEq.map(e => e.equipment));
+    render();
+  }
+
+  function render() {
+    const container = document.getElementById('equipment-list');
+    container.innerHTML = allEquipment.map(eq => `
+      <div class="ingredient-checkbox-row">
+        <label class="checkbox-wrap">
+          <input type="checkbox" ${userEquipment.has(eq.equipment) ? 'checked' : ''}
+            onchange="if(this.checked) userEquipment.add('${esc(eq.equipment)}'); else userEquipment.delete('${esc(eq.equipment)}');" />
+          <span class="checkmark"></span>
+        </label>
+        <span style="flex:1; font-weight:500;">🔪 ${esc(eq.equipment)}</span>
+        <span class="cost-badge">$${(eq.cost||0).toFixed(2)}</span>
+      </div>`).join('') || '<p class="text-muted text-sm">No equipment found.</p>';
+  }
+
+  async function save() {
+    const alertEl = document.getElementById('save-alert');
+    alertEl.classList.add('hidden');
+    try {
+      const res = await fetch('/api/updateEquipmentList', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userID: user.userID, equipment: [...userEquipment] })
+      });
+      if (res.ok) {
+        alertEl.className = 'alert alert-success mt-2';
+        alertEl.textContent = '✓ Equipment saved!';
+        alertEl.classList.remove('hidden');
+        setTimeout(() => alertEl.classList.add('hidden'), 3500);
+      } else throw new Error();
+    } catch (e) {
+      alertEl.className = 'alert alert-error mt-2';
+      alertEl.textContent = 'Failed to save. Please try again.';
+      alertEl.classList.remove('hidden');
+    }
+  }
+
+  function esc(str) {
+    return !str ? '' : String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+</script>
+{% endblock %}

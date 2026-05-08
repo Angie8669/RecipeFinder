@@ -1,8 +1,134 @@
-.container {
-    display: flex;
-    width: 100%;
-}
+/* ============================================
+   recipe.css — Single Recipe detail page
+   Hero image, action bar, two-column layout,
+   ingredients card, cost summary, equipment,
+   favorite button
+   Requires: base.css
+   ============================================ */
 
-.column {
-    width: 50%;
+/* ── Hero ── */
+.recipe-hero {
+  position: relative;
+  height: 420px;
+  overflow: hidden;
+  background: var(--charcoal);
 }
+.recipe-hero img { width: 100%; height: 100%; object-fit: cover; opacity: 0.7; }
+.recipe-hero-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 6rem;
+  background: linear-gradient(135deg, var(--charcoal), var(--brown));
+}
+.recipe-hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(26,18,8,0.85) 0%, transparent 60%);
+  display: flex;
+  align-items: flex-end;
+  padding: 2.5rem;
+}
+.recipe-hero-content      { color: var(--cream); }
+.recipe-hero-content h1   { color: var(--cream); font-size: clamp(1.8rem, 4vw, 2.8rem); }
+.recipe-meta-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1.5rem;
+  margin-top: 0.75rem;
+  font-size: 0.88rem;
+  color: rgba(250,247,242,0.8);
+}
+.recipe-meta-bar span { display: flex; align-items: center; gap: 0.35rem; }
+
+/* ── Two-column layout ── */
+.recipe-layout {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem;
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 3rem;
+  align-items: start;
+}
+.recipe-instructions h2   { margin-bottom: 1.25rem; }
+.recipe-instructions p,
+.recipe-instructions li   { font-size: 1rem; line-height: 1.8; color: var(--charcoal); }
+.instructions-text        { white-space: pre-line; font-size: 1rem; line-height: 1.8; }
+.recipe-sidebar           { position: sticky; top: 80px; }
+
+/* ── Ingredients card ── */
+.ingredients-card {
+  background: var(--warm-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.ingredients-card-header {
+  background: var(--terra);
+  color: white;
+  padding: 1rem 1.25rem;
+  font-family: 'Playfair Display', serif;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.ingredients-list { list-style: none; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; }
+.ingredient-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid var(--parchment);
+  font-size: 0.9rem;
+}
+.ingredient-item:last-child { border-bottom: none; padding-bottom: 0; }
+.ingredient-name   { font-weight: 500; color: var(--ink); }
+.ingredient-amount { color: var(--brown); font-variant-numeric: tabular-nums; }
+
+/* ── Cost summary ── */
+.cost-summary { padding: 1rem 1.25rem; border-top: 1px solid var(--border); background: var(--parchment); }
+.cost-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.88rem;
+  padding: 0.25rem 0;
+  color: var(--brown);
+}
+.cost-row.total { font-weight: 700; font-size: 1rem; color: var(--ink); border-top: 1px solid var(--border); margin-top: 0.5rem; padding-top: 0.75rem; }
+
+/* ── Equipment card ── */
+.equipment-card {
+  margin-top: 1rem;
+  background: var(--warm-white);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+}
+.equipment-header { padding: 0.85rem 1.25rem; background: var(--sage-light); color: var(--sage); font-weight: 600; font-size: 0.9rem; letter-spacing: 0.05em; }
+.equipment-list   { padding: 1rem 1.25rem; display: flex; flex-wrap: wrap; gap: 0.5rem; list-style: none; }
+
+/* ── Favorite button ── */
+.fav-btn {
+  background: transparent;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  padding: 0.5rem 0.75rem;
+  cursor: pointer;
+  font-size: 1.1rem;
+  line-height: 1;
+  transition: all var(--transition);
+  color: var(--brown);
+}
+.fav-btn.favorited { background: #fde8d8; border-color: var(--terra); color: var(--terra); }
+.fav-btn:hover     { border-color: var(--terra); }
+
+/* ── Responsive ── */
+@media (max-width: 900px) { .recipe-layout { grid-template-columns: 1fr; } }
+@media (max-width: 768px) { .recipe-layout { padding: 1.5rem 1rem; } }

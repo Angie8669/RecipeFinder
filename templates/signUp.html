@@ -1,55 +1,144 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Recipe Finder - Sign Up</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/index.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
-
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/signUp.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign Up — RecipeFinder</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/base.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles/auth.css') }}" />
 </head>
-
 <body>
 
-    <div class="topnav">
-        <div class="leftnav">
-            <a class="navItem" href="/">Home</a>
-            <a class="navItem" href="/recipes">Recipes</a>
+<div class="auth-page">
+
+  <!-- Left Panel -->
+  <div class="auth-panel">
+    <div class="auth-panel-inner">
+      <a href="/" style="color: var(--amber); font-family: 'Playfair Display', serif; font-size:1.2rem; font-weight:700; display:block; margin-bottom:2rem;">🍴 RecipeFinder</a>
+      <h2>Join the kitchen community</h2>
+      <p>Thousands of home cooks are already sharing their favorite dishes and discovering new ones every day.</p>
+      <div class="auth-features">
+        <div class="auth-feature">
+          <div class="auth-feature-icon">💵</div>
+          <p class="auth-feature-text">Filter recipes by your budget and see your personal cost after pantry deductions</p>
         </div>
-        <div class="rightnav">
-            <a class="navItem" href="/login">Login</a>
-            <a class="navItem" href="/signup">Sign Up</a>
+        <div class="auth-feature">
+          <div class="auth-feature-icon">🔪</div>
+          <p class="auth-feature-text">Track the equipment you own so recipes always match your kitchen</p>
         </div>
-
+        <div class="auth-feature">
+          <div class="auth-feature-icon">✨</div>
+          <p class="auth-feature-text">It's completely free — no subscriptions, no catches</p>
+        </div>
+      </div>
     </div>
-    <div class="content">
-        <div id="errorMessage"></div>
-        <form id="signUpForm">
-            <label>First Name</label>
-            <input type="text" placeholder="First Name" name="firstName"/>
-            <br/>
-            <label>Last Name</label>
-            <input type="text" placeholder="Last Name" name="lastName"/>
-            <br/>
-            <label>Username</label>
-            <input type="text" placeholder="Username" name="username"/>
-            <br/>
-            <label>Password</label>
-            <input type="password" placeholder="Password" name="password"/>
-            <br/>
-            <label>Confirm Password</label>
-            <input type="password" placeholder="Password" name="password2"/>
-            <br/>
-            <input type="submit" value="Submit"/>
-        </form>
+  </div>
+
+  <!-- Right Form Side -->
+  <div class="auth-form-side">
+    <div class="auth-form-card">
+      <div class="brand">🍴 RecipeFinder</div>
+      <h2>Create account</h2>
+      <p class="auth-subtitle">Already have an account? <a href="/login">Log in</a></p>
+
+      <div id="signup-alert" class="alert hidden"></div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label" for="firstName">First name</label>
+          <input class="form-control" type="text" id="firstName" placeholder="Jane" />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="lastName">Last name</label>
+          <input class="form-control" type="text" id="lastName" placeholder="Smith" />
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input class="form-control" type="text" id="username" placeholder="jane_cooks" autocomplete="username" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input class="form-control" type="password" id="password" placeholder="At least 8 characters" autocomplete="new-password" />
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="confirmPassword">Confirm password</label>
+        <input class="form-control" type="password" id="confirmPassword" placeholder="••••••••" autocomplete="new-password" />
+      </div>
+
+      <button class="btn btn-primary w-full btn-lg mt-2" id="signup-btn" onclick="signup()">
+        Create account
+      </button>
+
+      <div class="auth-switch mt-2">
+        Already a member? <a href="/login">Log in →</a>
+      </div>
     </div>
+  </div>
 
+</div>
 
+<script>
+  if (localStorage.getItem('user')) window.location.href = '/profile';
 
+  async function signup() {
+    const btn = document.getElementById('signup-btn');
+    const alertEl = document.getElementById('signup-alert');
+    alertEl.classList.add('hidden');
 
+    const firstName = document.getElementById('firstName').value.trim();
+    const lastName = document.getElementById('lastName').value.trim();
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('confirmPassword').value;
+
+    if (!firstName || !lastName || !username || !password) {
+      return showAlert('error', 'Please fill in all fields.');
+    }
+    if (password.length < 8) {
+      return showAlert('error', 'Password must be at least 8 characters.');
+    }
+    if (password !== confirm) {
+      return showAlert('error', 'Passwords do not match.');
+    }
+
+    btn.textContent = 'Creating account…';
+    btn.disabled = true;
+
+    try {
+      const res = await fetch('/createUser', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ firstName, lastName, username, password })
+      });
+
+      if (res.ok) {
+        showAlert('success', 'Account created! Redirecting to log in…');
+        setTimeout(() => window.location.href = '/login', 1200);
+      } else {
+        const msg = await res.text();
+        showAlert('error', msg || 'Something went wrong. Please try again.');
+      }
+    } catch (e) {
+      showAlert('error', 'Unable to connect. Please try again.');
+    } finally {
+      btn.textContent = 'Create account';
+      btn.disabled = false;
+    }
+  }
+
+  function showAlert(type, msg) {
+    const el = document.getElementById('signup-alert');
+    el.className = `alert alert-${type}`;
+    el.textContent = msg;
+    el.classList.remove('hidden');
+  }
+</script>
 
 </body>
-
 </html>

@@ -1,3 +1,52 @@
+/* ============================================
+   index.css — Home page (index.html)
+   Hero section, feature highlights, CTA
+   Requires: base.css
+   ============================================ */
 
+/* ── Hero ── */
+.hero {
+  background: linear-gradient(135deg, var(--charcoal) 0%, var(--brown) 60%, var(--sienna) 100%);
+  color: var(--cream);
+  padding: 5rem 2rem 6rem;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E") repeat;
+  pointer-events: none;
+}
+.hero-inner { position: relative; max-width: 700px; margin: 0 auto; }
 
+.hero-eyebrow {
+  display: inline-block;
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--amber);
+  margin-bottom: 1rem;
+}
+.hero h1 { color: var(--cream); font-size: clamp(2.5rem, 6vw, 4rem); margin-bottom: 1rem; }
+.hero p  { font-size: 1.1rem; color: rgba(250,247,242,0.75); margin-bottom: 2.5rem; max-width: 500px; margin-left: auto; margin-right: auto; }
 
+.hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+
+.hero .btn-primary {
+  background: var(--amber);
+  color: var(--ink);
+  font-weight: 600;
+  box-shadow: 0 4px 20px rgba(224,123,42,0.4);
+}
+.hero .btn-primary:hover { background: var(--gold); }
+.hero .btn-outline { border-color: rgba(250,247,242,0.4); color: var(--cream); }
+.hero .btn-outline:hover { background: rgba(250,247,242,0.1); color: var(--cream); }
+
+/* ── Responsive ── */
+@media (max-width: 768px) {
+  .hero { padding: 3.5rem 1rem 4rem; }
+}

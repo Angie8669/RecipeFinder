@@ -1,48 +1,319 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <title>Recipe Finder</title>
+{% extends "layout.html" %}
+{% block title %}My Profile — RecipeFinder{% endblock %}
+{% block head %}<link rel="stylesheet" href="{{ url_for('static', filename='styles/profile.css') }}">{% endblock %}
 
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/profile.css')}}">
-    <link rel="stylesheet" href="{{ url_for('static', filename = 'styles/nav.css')}}">
+{% block content %}
 
-    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
-    <script src="{{ url_for('static', filename = 'scripts/profile.js')}}"></script>
-    <script src="{{ url_for('static', filename = 'scripts/nav.js')}}"></script>
-</head>
-
-<body>
-
-<div class="topnav">
-    <div class="leftnav">
-        <a class="navItem" href="/">Home</a>
-        <a class="navItem" href="/recipes">Recipes</a>
-    </div>
-    <div class="rightnav">
-        <a class="navItem" href="/login">Login</a>
-        <a class="navItem" href="/signup">Sign Up</a>
-    </div>
-
-</div>
-<div class="content">
-    <div class="row">
-        <a href="/recipeForm">Create Recipe</a>
-        <a href="/ingredientListForm">Update Ingredient List</a>
-        <a href="/equipmentListForm">Update Equipment List</a>
-        <button id="swapDisplayButton">Show Favorites</button>
-    </div>
-    <div class="currentDisplay">
-    </div>
-    <div class="rightCol">
-        <div id="ingredientList" class="row">
-        </div>
-        <div id="equipmentList" class="row">
-        </div>
-    </div>
+<div id="profile-loading" class="loading-state" style="padding:5rem;">
+  <div class="spinner"></div>
+  <span>Loading profile…</span>
 </div>
 
-</body>
+<div id="profile-content" class="hidden">
 
-</html>
+  <!-- Profile Header -->
+  <div class="profile-header">
+    <div class="profile-header-inner">
+      <div class="avatar" id="profile-avatar">?</div>
+      <div class="profile-info">
+        <h1 id="profile-name">…</h1>
+        <p id="profile-username">@…</p>
+      </div>
+    </div>
+  </div>
 
+  <!-- Tabs -->
+  <div style="background:var(--warm-white); border-bottom:2px solid var(--border);">
+    <div class="container">
+      <div class="profile-tabs">
+        <button class="tab-btn active" onclick="switchTab('my-recipes', this)">My Recipes</button>
+        <button class="tab-btn" onclick="switchTab('favorites', this)">Favorites</button>
+        <button class="tab-btn" onclick="switchTab('pantry', this)">My Pantry</button>
+        <button class="tab-btn" onclick="switchTab('equipment-tab', this)">Equipment</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab Content -->
+  <div class="page-section">
+    <div class="container">
+
+      <!-- My Recipes Tab -->
+      <div class="tab-content active" id="tab-my-recipes">
+        <div class="section-heading mb-3">
+          <h2>My Recipes</h2>
+          <a href="/recipeForm" class="btn btn-primary">+ Add Recipe</a>
+        </div>
+        <div id="my-recipes-grid" class="recipes-grid">
+          <div class="loading-state" style="grid-column:1/-1;"><div class="spinner"></div><span>Loading…</span></div>
+        </div>
+      </div>
+
+      <!-- Favorites Tab -->
+      <div class="tab-content hidden" id="tab-favorites">
+        <div class="section-heading mb-3">
+          <h2>Favorite Recipes</h2>
+        </div>
+        <div id="favorites-grid" class="recipes-grid">
+          <div class="loading-state" style="grid-column:1/-1;"><div class="spinner"></div><span>Loading…</span></div>
+        </div>
+      </div>
+
+      <!-- Pantry Tab -->
+      <div class="tab-content hidden" id="tab-pantry">
+        <div class="section-heading mb-3">
+          <h2>My Pantry</h2>
+          <button class="btn btn-primary" onclick="savePantry()">Save Pantry</button>
+        </div>
+        <p class="text-muted text-sm mb-3">Check off ingredients you already own. Recipes will calculate your out-of-pocket cost.</p>
+
+        <div class="list-builder">
+          <div class="list-builder-header">
+            <h3>Available Ingredients</h3>
+            <div class="search-bar" style="max-width:280px;">
+              <input type="text" id="pantry-search" placeholder="Search…" oninput="filterPantry()" />
+              <button onclick="filterPantry()">🔍</button>
+            </div>
+          </div>
+          <div class="list-builder-body" id="pantry-list">
+            <div class="loading-state"><div class="spinner"></div><span>Loading ingredients…</span></div>
+          </div>
+        </div>
+        <div id="pantry-alert" class="alert hidden mt-2"></div>
+      </div>
+
+      <!-- Equipment Tab -->
+      <div class="tab-content hidden" id="tab-equipment-tab">
+        <div class="section-heading mb-3">
+          <h2>My Equipment</h2>
+          <button class="btn btn-primary" onclick="saveEquipment()">Save Equipment</button>
+        </div>
+        <p class="text-muted text-sm mb-3">Mark the kitchen tools you own so recipes can account for equipment costs.</p>
+
+        <div class="list-builder">
+          <div class="list-builder-header">
+            <h3>Kitchen Equipment</h3>
+          </div>
+          <div class="list-builder-body" id="equipment-list-profile">
+            <div class="loading-state"><div class="spinner"></div><span>Loading equipment…</span></div>
+          </div>
+        </div>
+        <div id="equipment-alert" class="alert hidden mt-2"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+  if (!user) {
+    document.getElementById('profile-loading').innerHTML = `
+      <div class="empty-state">
+        <div class="empty-state-icon">🔒</div>
+        <h3>Log in to view your profile</h3>
+        <a href="/login" class="btn btn-primary mt-2">Log in</a>
+      </div>`;
+  } else {
+    initProfile();
+  }
+
+  async function initProfile() {
+    document.getElementById('profile-avatar').textContent = user.username[0].toUpperCase();
+    document.getElementById('profile-name').textContent = `Welcome back!`;
+    document.getElementById('profile-username').textContent = `@${user.username}`;
+
+    document.getElementById('profile-loading').style.display = 'none';
+    document.getElementById('profile-content').classList.remove('hidden');
+
+    loadMyRecipes();
+    loadFavorites();
+    loadPantry();
+    loadEquipmentList();
+  }
+
+  async function loadMyRecipes() {
+    const grid = document.getElementById('my-recipes-grid');
+    try {
+      const res = await fetch(`/api/getRecipesByUser/${user.userID}`);
+      const data = await res.json();
+      const recipes = Object.values(data);
+      if (recipes.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-state-icon">📖</div>
+          <h3>No recipes yet</h3>
+          <p>Share your first recipe with the community!</p>
+          <a href="/recipeForm" class="btn btn-primary">Add a Recipe</a>
+        </div>`;
+        return;
+      }
+      grid.innerHTML = recipes.map(recipeCard).join('');
+    } catch (e) {
+      grid.innerHTML = `<div class="alert alert-error" style="grid-column:1/-1;">Failed to load recipes.</div>`;
+    }
+  }
+
+  async function loadFavorites() {
+    const grid = document.getElementById('favorites-grid');
+    try {
+      const res = await fetch(`/api/getFavoriteRecipes/${user.userID}`);
+      const data = await res.json();
+      const recipes = Object.values(data);
+      if (recipes.length === 0) {
+        grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1;">
+          <div class="empty-state-icon">❤️</div>
+          <h3>No favorites yet</h3>
+          <p>Browse recipes and tap ♡ to save favorites.</p>
+          <a href="/recipes" class="btn btn-primary">Browse Recipes</a>
+        </div>`;
+        return;
+      }
+      grid.innerHTML = recipes.map(recipeCard).join('');
+    } catch (e) {
+      grid.innerHTML = `<div class="alert alert-error" style="grid-column:1/-1;">Failed to load favorites.</div>`;
+    }
+  }
+
+  let allIngredients = [];
+  let userIngredients = new Set();
+
+  async function loadPantry() {
+    const [ingRes, userIngRes] = await Promise.all([
+      fetch('/api/getAllIngredients'),
+      fetch(`/api/getIngredientList/${user.userID}`)
+    ]);
+    allIngredients = await ingRes.json();
+    const userIng = await userIngRes.json();
+    userIngredients = new Set(userIng.map(i => i.ingredientID));
+    renderPantry(allIngredients);
+  }
+
+  function filterPantry() {
+    const q = document.getElementById('pantry-search').value.toLowerCase();
+    renderPantry(allIngredients.filter(i => i.ingredientName.toLowerCase().includes(q)));
+  }
+
+  function renderPantry(list) {
+    const container = document.getElementById('pantry-list');
+    container.innerHTML = list.map(ing => `
+      <div class="ingredient-checkbox-row">
+        <label class="checkbox-wrap">
+          <input type="checkbox" ${userIngredients.has(ing.ingredientID) ? 'checked' : ''}
+            onchange="if(this.checked) userIngredients.add(${ing.ingredientID}); else userIngredients.delete(${ing.ingredientID});" />
+          <span class="checkmark"></span>
+        </label>
+        <span style="flex:1;">${esc(ing.ingredientName)}</span>
+        <span class="cost-badge">$${(ing.cost||0)}</span>
+      </div>`).join('') || '<p class="text-muted text-sm">No ingredients found.</p>';
+  }
+
+  async function savePantry() {
+    const alertEl = document.getElementById('pantry-alert');
+    alertEl.classList.add('hidden');
+    try {
+      const ingredients = [...userIngredients].map(id => ({ ingredientID: id }));
+      const res = await fetch('/api/updateIngredientList', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userID: user.userID, ingredients })
+      });
+      if (res.ok) {
+        alertEl.className = 'alert alert-success mt-2';
+        alertEl.textContent = '✓ Pantry saved!';
+        alertEl.classList.remove('hidden');
+        setTimeout(() => alertEl.classList.add('hidden'), 3000);
+      } else {
+        throw new Error();
+      }
+    } catch (e) {
+      alertEl.className = 'alert alert-error mt-2';
+      alertEl.textContent = 'Failed to save pantry. Please try again.';
+      alertEl.classList.remove('hidden');
+    }
+  }
+
+  let allEquipment = [];
+  let userEquipment = new Set();
+
+  async function loadEquipmentList() {
+    const [eqRes, userEqRes] = await Promise.all([
+      fetch('/api/getAllEquipment'),
+      fetch(`/api/getEquipmentList/${user.userID}`)
+    ]);
+    allEquipment = await eqRes.json();
+    const userEq = await userEqRes.json();
+    userEquipment = new Set(userEq.map(e => e.equipment));
+    renderEquipmentList(allEquipment);
+  }
+
+  function renderEquipmentList(list) {
+    const container = document.getElementById('equipment-list-profile');
+    container.innerHTML = list.map(eq => `
+      <div class="ingredient-checkbox-row">
+        <label class="checkbox-wrap">
+          <input type="checkbox" ${userEquipment.has(eq.equipment) ? 'checked' : ''}
+            onchange="if(this.checked) userEquipment.add('${esc(eq.equipment)}'); else userEquipment.delete('${esc(eq.equipment)}');" />
+          <span class="checkmark"></span>
+        </label>
+        <span style="flex:1;">${esc(eq.equipment)}</span>
+        <span class="cost-badge">$${(eq.cost||0)}</span>
+      </div>`).join('') || '<p class="text-muted text-sm">No equipment found.</p>';
+  }
+
+  async function saveEquipment() {
+    const alertEl = document.getElementById('equipment-alert');
+    alertEl.classList.add('hidden');
+    try {
+      const res = await fetch('/api/updateEquipmentList', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userID: user.userID, equipment: [...userEquipment] })
+      });
+      if (res.ok) {
+        alertEl.className = 'alert alert-success mt-2';
+        alertEl.textContent = '✓ Equipment saved!';
+        alertEl.classList.remove('hidden');
+        setTimeout(() => alertEl.classList.add('hidden'), 3000);
+      } else { throw new Error(); }
+    } catch (e) {
+      alertEl.className = 'alert alert-error mt-2';
+      alertEl.textContent = 'Failed to save equipment.';
+      alertEl.classList.remove('hidden');
+    }
+  }
+
+  function switchTab(id, btn) {
+    document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(b => b.classList.remove('active'));
+    document.getElementById(`tab-${id}`).classList.remove('hidden');
+    document.getElementById(`tab-${id}`).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  function recipeCard(r) {
+    const img = r.img
+      ? `<img class="card-img" src="${esc(r.img)}" alt="${esc(r.recipeName)}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';">
+         <div class="card-img-placeholder" style="display:none;">🍽️</div>`
+      : `<div class="card-img-placeholder">🍽️</div>`;
+    const tags = r.tags ? r.tags.split(',').filter(Boolean).slice(0,3).map(t => `<span class="tag">${esc(t.trim())}</span>`).join('') : '';
+    return `
+      <a href="/recipe/${r.recipeID}" class="card" style="display:block;">
+        ${img}
+        <div class="card-body">
+          <h3 class="card-title">${esc(r.recipeName)}</h3>
+          ${r.cost !== undefined ? `<div class="card-meta"><span class="cost-badge">💵 $${r.cost}</span></div>` : ''}
+          ${tags ? `<div class="tags-row">${tags}</div>` : ''}
+        </div>
+      </a>`;
+  }
+
+  function esc(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+</script>
+{% endblock %}
